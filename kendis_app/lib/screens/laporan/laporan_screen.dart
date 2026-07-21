@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../core/app_theme.dart';
-import '../models/penugasan_model.dart';
-import '../services/penugasan_service.dart';
-import 'penugasan_detail_screen.dart';
+import '../../core/app_theme.dart';
+import '../../models/penugasan_model.dart';
+import '../../services/penugasan_service.dart';
+import '../penugasan/penugasan_detail_screen.dart';
 
 class LaporanScreen extends StatefulWidget {
   const LaporanScreen({super.key});

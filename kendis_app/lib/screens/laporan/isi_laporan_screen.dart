@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../core/app_theme.dart';
-import '../core/api_client.dart';
-import '../services/laporan_service.dart';
+import '../../core/app_theme.dart';
+import '../../core/api_client.dart';
+import '../../services/laporan_service.dart';
 
 class IsiLaporanScreen extends StatefulWidget {
   final int idPenugasan;
