@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/app_theme.dart';
-import '../providers/auth_provider.dart';
-import '../services/penugasan_service.dart';
-import 'penugasan_detail_screen.dart';
+import '../../core/app_theme.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/penugasan_service.dart';
+import '../penugasan/penugasan_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});

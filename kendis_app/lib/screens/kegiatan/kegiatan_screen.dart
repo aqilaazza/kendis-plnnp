@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../core/app_theme.dart';
-import '../core/api_client.dart';
-import '../models/kegiatan_model.dart';
-import '../services/kegiatan_service.dart';
+import '../../core/app_theme.dart';
+import '../../core/api_client.dart';
+import '../../models/kegiatan_model.dart';
+import '../../services/kegiatan_service.dart';
 
 class KegiatanScreen extends StatefulWidget {
   const KegiatanScreen({super.key});

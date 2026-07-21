@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../core/app_theme.dart';
-import '../core/api_client.dart';
-import '../services/penugasan_service.dart';
-import 'isi_laporan_screen.dart';
+import '../../core/app_theme.dart';
+import '../../core/api_client.dart';
+import '../../services/penugasan_service.dart';
+import '../laporan/isi_laporan_screen.dart';
 
 class PenugasanDetailScreen extends StatefulWidget {
   final int id;
