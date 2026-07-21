@@ -37,24 +37,152 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
             child: Row(
               children: [
-                const Text('Penugasan Saya',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                Expanded(
+                  child: Column(
+                    children: const [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Riwayat Penugasan",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Daftar perjalanan yang telah dikirim.",
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal:20),
+            child: Container(
+              height:120,
+              width:double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    Text(
+                      "Kualitas Armada Nomor Satu",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize:18,
+                      ),
+                    ),
+
+                    SizedBox(height:8),
+
+                    Text(
+                      "Menjadi armada operasional terpercaya.",
+                      style: TextStyle(
+                        color: Colors.white70,
+                      ),
+                    ),
+
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                _FilterChip(label: 'Semua', value: 'semua', selected: _filter, onTap: _setFilter),
-                const SizedBox(width: 8),
-                _FilterChip(label: 'Aktif', value: 'aktif', selected: _filter, onTap: _setFilter),
-                const SizedBox(width: 8),
-                _FilterChip(label: 'Selesai', value: 'selesai', selected: _filter, onTap: _setFilter),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _FilterChip(
+                    label: 'Semua',
+                    value: 'semua',
+                    selected: _filter,
+                    onTap: _setFilter,
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Menunggu',
+                    value: 'menunggu',
+                    selected: _filter,
+                    onTap: _setFilter,
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Diproses',
+                    value: 'diproses',
+                    selected: _filter,
+                    onTap: _setFilter,
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Selesai',
+                    value: 'selesai',
+                    selected: _filter,
+                    onTap: _setFilter,
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 16),
+
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Cari laporan...",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: const Color(0xFFF5F7FA),
+                prefixIconColor: Colors.grey,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
           Expanded(
             child: FutureBuilder<List<PenugasanModel>>(
               future: _future,
@@ -135,58 +263,201 @@ class _PenugasanTile extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => PenugasanDetailScreen(id: penugasan.id)),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+    Widget _buildItem(
+      IconData icon,
+      String title,
+      String value,
+    ) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          Icon(
+            icon,
+            size: 18,
+            color: AppColors.primary,
+          ),
+
+          const SizedBox(width: 10),
+
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+
+                const SizedBox(height: 2),
+
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+              ],
+            ),
+          ),
+
+        ],
+      );
+    }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.white,
+        elevation: 2,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PenugasanDetailScreen(
+                  id: penugasan.id,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                /// HEADER
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(penugasan.kodeRequest,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+
+                    Expanded(
+                      child: Text(
+                        penugasan.kodeRequest,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      child: Text(penugasan.statusLabel,
-                          style: TextStyle(fontSize: 11, color: _statusColor, fontWeight: FontWeight.w600)),
                     ),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusColor.withOpacity(.15),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        penugasan.statusLabel,
+                        style: TextStyle(
+                          color: _statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+
                   ],
                 ),
-                const SizedBox(height: 8),
+
+                const SizedBox(height: 18),
+
+                _buildItem(
+                  Icons.person_outline,
+                  "Pemohon",
+                  penugasan.namaPemohon ?? "-",
+                ),
+
+                const SizedBox(height: 10),
+
+                _buildItem(
+                  Icons.location_on_outlined,
+                  "Tujuan",
+                  penugasan.tempatTujuan,
+                ),
+
+                const SizedBox(height: 10),
+
+                _buildItem(
+                  Icons.work_outline,
+                  "Kegiatan",
+                  penugasan.kegiatan,
+                ),
+
+                const SizedBox(height: 10),
+
+                _buildItem(
+                  Icons.calendar_today_outlined,
+                  "Berangkat",
+                  "${penugasan.tanggalBerangkat} • ${penugasan.jamBerangkat}",
+                ),
+
+                if (penugasan.jamKembali != null) ...[
+                  const SizedBox(height: 10),
+                  _buildItem(
+                    Icons.access_time,
+                    "Kembali",
+                    penugasan.jamKembali!,
+                  ),
+                ],
+
+                const Divider(height: 30),
+
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(penugasan.tempatTujuan, style: TextStyle(color: AppColors.textBody, fontSize: 13))),
+
+                    const Icon(
+                      Icons.directions_car,
+                      color: AppColors.primary,
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    Expanded(
+                      child: Text(
+                        "${penugasan.merkKendaraan ?? '-'} (${penugasan.nopol ?? '-'})",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
                   ],
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
-                    Text('${penugasan.tanggalBerangkat}  ${penugasan.jamBerangkat}',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                  ],
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PenugasanDetailScreen(
+                            id: penugasan.id,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text("Lihat Detail"),
+                  ),
                 ),
+
               ],
             ),
           ),
