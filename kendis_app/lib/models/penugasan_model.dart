@@ -19,6 +19,9 @@ class PenugasanModel {
   final String? namaPemohon;
   final String? hpPemohon;
   final String? namaAtasan;
+  final double? totalPelaporan;
+  final int? odoStart;
+  final int? odoStop;
 
   PenugasanModel({
     required this.id,
@@ -41,6 +44,9 @@ class PenugasanModel {
     this.namaPemohon,
     this.hpPemohon,
     this.namaAtasan,
+    this.totalPelaporan,
+    this.odoStart,
+    this.odoStop,
   });
 
   factory PenugasanModel.fromJson(Map<String, dynamic> json) {
@@ -65,8 +71,17 @@ class PenugasanModel {
       namaPemohon: json['nama_pemohon'],
       hpPemohon: json['hp_pemohon'],
       namaAtasan: json['nama_atasan'],
+      totalPelaporan: json['total_pelaporan'] != null ? double.tryParse(json['total_pelaporan'].toString()) : null,
+      odoStart: json['odo_start'] != null ? int.tryParse(json['odo_start'].toString()) : null,
+      odoStop: json['odo_stop'] != null ? int.tryParse(json['odo_stop'].toString()) : null,
     );
   }
+
+  /// Jarak tempuh (km), null jika laporan belum diisi
+  int? get jarakKm => (odoStart != null && odoStop != null && odoStop! >= odoStart!) ? odoStop! - odoStart! : null;
+
+  /// true jika laporan driver untuk penugasan ini sudah pernah dikirim
+  bool get sudahLapor => totalPelaporan != null;
 
   /// Label status yang ramah untuk ditampilkan ke driver
   String get statusLabel {
