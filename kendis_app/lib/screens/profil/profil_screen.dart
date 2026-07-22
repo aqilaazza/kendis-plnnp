@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:kendis_driver_app/screens/login/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../login_screen.dart';
+import '../login/login_screen.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
