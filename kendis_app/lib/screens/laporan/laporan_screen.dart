@@ -5,7 +5,7 @@ import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
 import '../penugasan/penugasan_detail_screen.dart';
 
-enum _RangeFilter { semua, mingguIni, bulanIni }
+enum _MainTab { perluDiisi, riwayat }
 
 class LaporanScreen extends StatefulWidget {
   const LaporanScreen({super.key});
@@ -17,7 +17,8 @@ class LaporanScreen extends StatefulWidget {
 class _LaporanScreenState extends State<LaporanScreen> {
   late Future<List<PenugasanModel>> _future;
   final _searchCtrl = TextEditingController();
-  _RangeFilter _range = _RangeFilter.semua;
+  _MainTab _tab = _MainTab.perluDiisi;
+  bool _tabTouched = false; // true setelah user pertama kali tap tab manual
 
   @override
   void initState() {
@@ -47,28 +48,20 @@ class _LaporanScreenState extends State<LaporanScreen> {
     await _future;
   }
 
-  bool _matchesRange(PenugasanModel p) {
-    if (_range == _RangeFilter.semua) return true;
-    final tgl = DateTime.tryParse(p.tanggalBerangkat);
-    if (tgl == null) return true;
-    final now = DateTime.now();
-    if (_range == _RangeFilter.bulanIni) {
-      return tgl.year == now.year && tgl.month == now.month;
-    }
-    // Minggu ini: 7 hari terakhir dari hari ini
-    final awalMinggu = now.subtract(const Duration(days: 7));
-    return tgl.isAfter(awalMinggu) && tgl.isBefore(now.add(const Duration(days: 1)));
+  bool _matchesSearch(PenugasanModel p) {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return p.kodeRequest.toLowerCase().contains(q) || p.tempatTujuan.toLowerCase().contains(q);
   }
 
-  List<PenugasanModel> _applyFilters(List<PenugasanModel> list) {
-    var filtered = list.where(_matchesRange).toList();
-    final q = _searchCtrl.text.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      filtered = filtered
-          .where((p) => p.kodeRequest.toLowerCase().contains(q) || p.tempatTujuan.toLowerCase().contains(q))
-          .toList();
-    }
-    return filtered;
+  /// Laporan yang trip-nya sudah jalan tapi BELUM diisi driver.
+  List<PenugasanModel> _belumDiisi(List<PenugasanModel> all) {
+    return all.where((p) => !p.sudahLapor && _matchesSearch(p)).toList();
+  }
+
+  /// Riwayat: laporan yang sudah diisi (completed/rated).
+  List<PenugasanModel> _riwayat(List<PenugasanModel> all) {
+    return all.where((p) => p.sudahLapor && _matchesSearch(p)).toList();
   }
 
   @override
@@ -83,7 +76,15 @@ class _LaporanScreenState extends State<LaporanScreen> {
             builder: (context, snapshot) {
               final isLoading = snapshot.connectionState == ConnectionState.waiting;
               final allData = snapshot.data ?? [];
-              final list = _applyFilters(allData);
+              final belumDiisi = _belumDiisi(allData);
+              final riwayat = _riwayat(allData);
+
+              // Default tab: kalau ada yang perlu diisi, buka di situ dulu.
+              // Setelah user tap tab manual sekali, jangan dipaksa pindah lagi.
+              if (!_tabTouched && belumDiisi.isEmpty && riwayat.isNotEmpty) {
+                _tab = _MainTab.riwayat;
+              }
+              final activeList = _tab == _MainTab.perluDiisi ? belumDiisi : riwayat;
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -98,9 +99,14 @@ class _LaporanScreenState extends State<LaporanScreen> {
                   _HeroCard(),
                   const SizedBox(height: 16),
 
-                  _RangeFilterChips(
-                    value: _range,
-                    onChanged: (v) => setState(() => _range = v),
+                  _MainTabChips(
+                    value: _tab,
+                    countPerluDiisi: belumDiisi.length,
+                    countRiwayat: riwayat.length,
+                    onChanged: (v) => setState(() {
+                      _tab = v;
+                      _tabTouched = true;
+                    }),
                   ),
                   const SizedBox(height: 12),
 
@@ -120,17 +126,22 @@ class _LaporanScreenState extends State<LaporanScreen> {
                     )
                   else if (snapshot.hasError)
                     Center(child: Text('Gagal memuat: ${snapshot.error}'))
-                  else if (list.isEmpty)
+                  else if (activeList.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 40),
                       child: Center(
-                        child: Text('Belum ada laporan yang terkirim.', style: TextStyle(color: AppColors.textMuted)),
+                        child: Text(
+                          _tab == _MainTab.perluDiisi
+                              ? 'Tidak ada laporan yang perlu diisi.'
+                              : 'Belum ada laporan yang terkirim.',
+                          style: TextStyle(color: AppColors.textMuted),
+                        ),
                       ),
                     )
                   else
-                    ...list.map((p) => _LaporanCard(penugasan: p)),
+                    ...activeList.map((p) => _LaporanCard(penugasan: p)),
 
-                  if (!isLoading && !snapshot.hasError && allData.isNotEmpty) ...[
+                  if (!isLoading && !snapshot.hasError && _tab == _MainTab.riwayat && allData.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     _RingkasanBulanIni(list: allData),
                   ],
@@ -205,18 +216,25 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-/// Segmented filter Semua / Minggu Ini / Bulan Ini.
-class _RangeFilterChips extends StatelessWidget {
-  final _RangeFilter value;
-  final ValueChanged<_RangeFilter> onChanged;
-  const _RangeFilterChips({required this.value, required this.onChanged});
+/// Segmented tab: Perlu Diisi / Riwayat — menggantikan filter tanggal lama
+/// (Semua / Minggu Ini / Bulan Ini) dengan filter status laporan.
+class _MainTabChips extends StatelessWidget {
+  final _MainTab value;
+  final int countPerluDiisi;
+  final int countRiwayat;
+  final ValueChanged<_MainTab> onChanged;
+  const _MainTabChips({
+    required this.value,
+    required this.countPerluDiisi,
+    required this.countRiwayat,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final options = const {
-      _RangeFilter.semua: 'Semua',
-      _RangeFilter.mingguIni: 'Minggu Ini',
-      _RangeFilter.bulanIni: 'Bulan Ini',
+    final options = {
+      _MainTab.perluDiisi: ('Perlu Diisi', countPerluDiisi),
+      _MainTab.riwayat: ('Riwayat', countRiwayat),
     };
 
     return Container(
@@ -228,6 +246,8 @@ class _RangeFilterChips extends StatelessWidget {
       child: Row(
         children: options.entries.map((e) {
           final isSelected = e.key == value;
+          final label = e.value.$1;
+          final count = e.value.$2;
           return Expanded(
             child: GestureDetector(
               onTap: () => onChanged(e.key),
@@ -242,13 +262,36 @@ class _RangeFilterChips extends StatelessWidget {
                       : null,
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  e.value,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? AppColors.primary : AppColors.textMuted,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected ? AppColors.primary : AppColors.textMuted,
+                      ),
+                    ),
+                    if (count > 0) ...[
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: (isSelected ? AppColors.primary : AppColors.textMuted).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$count',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? AppColors.primary : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
