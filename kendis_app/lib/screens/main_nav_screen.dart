@@ -4,7 +4,7 @@ import 'dashboard_screen.dart';
 import 'penugasan_list_screen.dart';
 import 'laporan_screen.dart';
 import 'kegiatan_screen.dart';
-import 'profil_screen.dart';
+import 'profil/profil_screen.dart';
 
 class MainNavScreen extends StatefulWidget {
   const MainNavScreen({super.key});
