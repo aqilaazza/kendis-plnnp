@@ -19,6 +19,9 @@ class AuthService {
     await prefs.setString('user_nama', user.nama);
 
     return user;
+
+    await prefs.setString('auth_token', token);
+    print('TOKEN DISIMPAN: $token');
   }
 
   // ============================================================
