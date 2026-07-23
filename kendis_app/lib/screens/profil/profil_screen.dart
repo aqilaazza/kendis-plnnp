@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:kendis_driver_app/screens/login/login_screen.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../login/login_screen.dart';
+import 'foto_profil_screen.dart';
+import 'edit_profil_screen.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
@@ -80,7 +82,7 @@ class ProfilScreen extends StatelessWidget {
                   // =====================================================
                   // PROFILE CARD
                   // =====================================================
-                  _buildProfileCard(user),
+                  _buildProfileCard(context, user),
 
                   const SizedBox(height: 20),
 
@@ -94,8 +96,60 @@ class ProfilScreen extends StatelessWidget {
                       _MenuTile(
                         icon: Icons.person_outline,
                         label: 'Edit Profil',
-                        onTap: () {
-                          // Nanti diarahkan ke EditProfilScreen
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EditProfilScreen(),
+                            ),
+                          );
+
+                          if (result == true && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Text(
+                                        'Profil berhasil diperbarui',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: AppColors.primary,
+                                behavior: SnackBarBehavior.floating,
+                                elevation: 4,
+                                margin: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  20,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
                         },
                       ),
                       _MenuTile(
@@ -214,7 +268,7 @@ class ProfilScreen extends StatelessWidget {
   // PROFILE CARD
   // =========================================================================
 
-  Widget _buildProfileCard(dynamic user) {
+  Widget _buildProfileCard(BuildContext context, dynamic user) {
     final String nama = user?.nama ?? '-';
     final String nid = user?.nid ?? '-';
 
@@ -236,10 +290,6 @@ class ProfilScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ===============================================================
-          // FOTO PROFIL SEMENTARA
-          // Nanti akan diganti menjadi foto dari API
-          // ===============================================================
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -266,36 +316,41 @@ class ProfilScreen extends StatelessWidget {
                 ),
               ),
 
-              // Icon edit foto
+              // ICON PENSIL
               Positioned(
                 right: -1,
                 bottom: -1,
-                child: Container(
-                  width: 19,
-                  height: 19,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 2,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FotoProfilScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 19,
+                    height: 19,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  child: const Icon(
-                    Icons.edit,
-                    size: 9,
-                    color: Colors.white,
+                    child: const Icon(
+                      Icons.edit,
+                      size: 9,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-
           const SizedBox(width: 14),
-
-          // ===============================================================
-          // INFORMASI DRIVER
-          // ===============================================================
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,9 +365,7 @@ class ProfilScreen extends StatelessWidget {
                     color: AppColors.primary,
                   ),
                 ),
-
                 const SizedBox(height: 2),
-
                 Text(
                   nid,
                   maxLines: 1,
@@ -322,10 +375,7 @@ class ProfilScreen extends StatelessWidget {
                     color: AppColors.textMuted,
                   ),
                 ),
-
                 const SizedBox(height: 5),
-
-                // Badge Driver
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
