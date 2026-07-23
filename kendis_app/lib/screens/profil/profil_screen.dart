@@ -8,6 +8,7 @@ import 'foto_profil_screen.dart';
 import 'edit_profil_screen.dart';
 import 'ganti_password_screen.dart';
 import 'pengaturan_notifikasi_screen.dart';
+import 'pusat_bantuan_screen.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
@@ -197,32 +198,33 @@ class ProfilScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                              backgroundColor: AppColors.primary,
-                              behavior: SnackBarBehavior.floating,
-                              elevation: 4,
-                              margin: const EdgeInsets.fromLTRB(
-                                16,
-                                0,
-                                16,
-                                20,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              duration: const Duration(seconds: 2),
+                                backgroundColor: AppColors.primary,
+                                behavior: SnackBarBehavior.floating,
+                                elevation: 4,
+                                margin: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  20,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                duration: const Duration(seconds: 2),
                               ),
                             );
                           }
                         },
                       ),
-                     _MenuTile(
+                      _MenuTile(
                         icon: Icons.notifications_none_outlined,
                         label: 'Pengaturan Notifikasi',
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const PengaturanNotifikasiScreen(),
+                              builder: (_) =>
+                                  const PengaturanNotifikasiScreen(),
                             ),
                           );
                         },
@@ -243,7 +245,12 @@ class ProfilScreen extends StatelessWidget {
                         icon: Icons.help_outline,
                         label: 'Pusat Bantuan',
                         onTap: () {
-                          // Nanti diarahkan ke HelpCenterScreen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PusatBantuanScreen(),
+                            ),
+                          );
                         },
                       ),
                       _MenuTile(
