@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../core/api_client.dart';
+import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
 import '../laporan/isi_laporan_screen.dart';
 
@@ -137,8 +138,13 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
+                        // IsiLaporanScreen sekarang butuh objek PenugasanModel (bukan
+                        // cuma id) supaya bisa nampilin kartu "Informasi Perjalanan"
+                        // di atas form tanpa fetch ulang. Data detail di sini masih
+                        // berupa Map<String, dynamic> mentah dari API, jadi di-convert
+                        // dulu pakai PenugasanModel.fromJson(...).
                         Navigator.of(context)
-                            .push(MaterialPageRoute(builder: (_) => IsiLaporanScreen(idPenugasan: widget.id)))
+                            .push(MaterialPageRoute(builder: (_) => IsiLaporanScreen(penugasan: PenugasanModel.fromJson(d))))
                             .then((_) => _reload());
                       },
                       icon: const Icon(Icons.receipt_long),
