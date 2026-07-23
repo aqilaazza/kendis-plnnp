@@ -6,6 +6,7 @@ import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import 'foto_profil_screen.dart';
 import 'edit_profil_screen.dart';
+import 'ganti_password_screen.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
@@ -155,8 +156,62 @@ class ProfilScreen extends StatelessWidget {
                       _MenuTile(
                         icon: Icons.lock_reset_outlined,
                         label: 'Ganti Password',
-                        onTap: () {
-                          // Nanti diarahkan ke ChangePasswordScreen
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const GantiPasswordScreen(),
+                            ),
+                          );
+
+                          if (result == true && context.mounted) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Text(
+                                        'Password berhasil diperbarui',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              backgroundColor: AppColors.primary,
+                              behavior: SnackBarBehavior.floating,
+                              elevation: 4,
+                              margin: const EdgeInsets.fromLTRB(
+                                16,
+                                0,
+                                16,
+                                20,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
                         },
                       ),
                       _MenuTile(
