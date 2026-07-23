@@ -60,6 +60,20 @@ class AuthService {
   }
 
   // ============================================================
+  // GANTI PASSWORD
+  // ============================================================
+
+  static Future<void> changePassword({
+  required String passwordLama,
+  required String passwordBaru,
+  }) async {
+    await ApiClient.post('/profil/change_password.php', {
+      'password_lama': passwordLama,
+      'password_baru': passwordBaru,
+    });
+  }
+
+  // ============================================================
   // LOGOUT
   // ============================================================
 

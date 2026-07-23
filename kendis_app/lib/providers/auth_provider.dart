@@ -90,7 +90,7 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   Future<void> logout() async {
     await AuthService.logout();
 
@@ -98,5 +98,39 @@ class AuthProvider extends ChangeNotifier {
     status = AuthStatus.loggedOut;
 
     notifyListeners();
+  }
+
+  // ============================================================
+  // UPDATE PROFILE
+  // ============================================================
+  Future<bool> changePassword({
+    required String passwordLama,
+    required String passwordBaru,
+  }) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await AuthService.changePassword(
+        passwordLama: passwordLama,
+        passwordBaru: passwordBaru,
+      );
+
+      isLoading = false;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      errorMessage = e.toString().replaceFirst(
+        'ApiException: ',
+        '',
+      );
+
+      isLoading = false;
+      notifyListeners();
+
+      return false;
+    }
   }
 }
