@@ -27,29 +27,41 @@ class ApiClient {
 
   static Future<Map<String, dynamic>> get(String endpoint) async {
     final token = await _getToken();
-    final res = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-    );
-    return _handleResponse(res);
+    try {
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      return _handleResponse(res);
+    } on SocketException catch (e) {
+      throw ApiException('Tidak dapat terhubung ke server: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw ApiException('Gagal menghubungi server (${e.message})');
+    }
   }
 
   static Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> body) async {
     final token = await _getToken();
-    final res = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(body),
-    );
-    return _handleResponse(res);
+    try {
+      final res = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+      return _handleResponse(res);
+    } on SocketException catch (e) {
+      throw ApiException('Tidak dapat terhubung ke server: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw ApiException('Gagal menghubungi server (${e.message})');
+    }
   }
 
   /// Untuk submit laporan dengan foto (multipart/form-data)
@@ -73,9 +85,15 @@ class ApiClient {
       }
     }
 
-    final streamedRes = await request.send();
-    final res = await http.Response.fromStream(streamedRes);
-    return _handleResponse(res);
+    try {
+      final streamedRes = await request.send();
+      final res = await http.Response.fromStream(streamedRes);
+      return _handleResponse(res);
+    } on SocketException catch (e) {
+      throw ApiException('Tidak dapat terhubung ke server: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw ApiException('Gagal menghubungi server (${e.message})');
+    }
   }
 
   static Map<String, dynamic> _handleResponse(http.Response res) {
@@ -83,10 +101,13 @@ class ApiClient {
     try {
       body = jsonDecode(res.body) as Map<String, dynamic>;
     } catch (_) {
-      throw ApiException('Respons server tidak valid (${res.statusCode})', res.statusCode);
+      throw ApiException(
+        'Respons server tidak valid (${res.statusCode}). Body: ${res.body.length > 200 ? '${res.body.substring(0, 200)}...' : res.body}',
+        res.statusCode,
+      );
     }
 
-    if (res.statusCode >= 200 && res.statusCode < 300 && body['success'] == true) {
+    if (res.statusCode >= 200 && res.statusCode < 300 && body['status'] == true) {
       return body;
     }
     throw ApiException(body['message'] ?? 'Terjadi kesalahan', res.statusCode);
