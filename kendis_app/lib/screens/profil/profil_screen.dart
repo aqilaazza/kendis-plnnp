@@ -9,6 +9,7 @@ import 'edit_profil_screen.dart';
 import 'ganti_password_screen.dart';
 import 'pengaturan_notifikasi_screen.dart';
 import 'pusat_bantuan_screen.dart';
+import 'tentang_aplikasi_screen.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
@@ -257,7 +258,12 @@ class ProfilScreen extends StatelessWidget {
                         icon: Icons.info_outline,
                         label: 'Tentang Aplikasi',
                         onTap: () {
-                          // Nanti diarahkan ke AboutAppScreen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TentangAplikasiScreen(),
+                            ),
+                          );
                         },
                       ),
                       _MenuTile(
