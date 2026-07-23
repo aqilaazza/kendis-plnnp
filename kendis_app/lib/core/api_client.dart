@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// - Kalau test di HP fisik (satu WiFi dgn laptop): gunakan IP laptop, misal 192.168.1.5
 /// - Nama folder default Laragon: taruh folder kendis_api di C:\laragon\www\kendis_api
 class ApiConfig {
-  static const String baseUrl = 'http://localhost/kendis-plnnp/kendis_api';
+  static const String baseUrl = 'https://sharie-untuberculous-devona.ngrok-free.dev/kendis-plnnp/kendis_api';
 }
 
 class ApiException implements Exception {
@@ -31,6 +31,7 @@ class ApiClient {
       Uri.parse('${ApiConfig.baseUrl}$endpoint'),
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
@@ -43,6 +44,7 @@ class ApiClient {
       Uri.parse('${ApiConfig.baseUrl}$endpoint'),
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
         if (token != null) 'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
@@ -59,9 +61,12 @@ class ApiClient {
     final token = await _getToken();
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
     final request = http.MultipartRequest('POST', uri);
-    if (token != null) request.headers['Authorization'] = 'Bearer $token';
-    request.fields.addAll(fields);
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
 
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    
     for (final entry in files.entries) {
       if (entry.value != null) {
         request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value!.path));
