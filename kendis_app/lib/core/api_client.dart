@@ -20,10 +20,17 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  // static Future<String?> _getToken() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   return prefs.getString('auth_token');
+  // }
+
   static Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('auth_token');
+  print('TOKEN: $token');
+  return token;
+}
 
   static Future<Map<String, dynamic>> get(String endpoint) async {
     final token = await _getToken();
@@ -31,7 +38,7 @@ class ApiClient {
       Uri.parse('${ApiConfig.baseUrl}$endpoint'),
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
+        
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
@@ -44,7 +51,7 @@ class ApiClient {
       Uri.parse('${ApiConfig.baseUrl}$endpoint'),
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
+        
         if (token != null) 'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
@@ -64,8 +71,6 @@ class ApiClient {
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
     }
-
-    request.headers['ngrok-skip-browser-warning'] = 'true';
     
     for (final entry in files.entries) {
       final file = entry.value;
