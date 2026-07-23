@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import 'foto_profil_screen.dart';
 import 'edit_profil_screen.dart';
 import 'ganti_password_screen.dart';
+import 'pengaturan_notifikasi_screen.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
@@ -214,11 +215,16 @@ class ProfilScreen extends StatelessWidget {
                           }
                         },
                       ),
-                      _MenuTile(
+                     _MenuTile(
                         icon: Icons.notifications_none_outlined,
                         label: 'Pengaturan Notifikasi',
                         onTap: () {
-                          // Nanti diarahkan ke NotificationSettingsScreen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PengaturanNotifikasiScreen(),
+                            ),
+                          );
                         },
                       ),
                     ],
