@@ -4,6 +4,7 @@ import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
 import '../penugasan/penugasan_detail_screen.dart';
+import 'isi_laporan_screen.dart';
 
 enum _MainTab { perluDiisi, riwayat }
 
@@ -216,6 +217,13 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
+class _TabOption {
+  final _MainTab tab;
+  final String label;
+  final int count;
+  const _TabOption(this.tab, this.label, this.count);
+}
+
 /// Segmented tab: Perlu Diisi / Riwayat — menggantikan filter tanggal lama
 /// (Semua / Minggu Ini / Bulan Ini) dengan filter status laporan.
 class _MainTabChips extends StatelessWidget {
@@ -232,10 +240,10 @@ class _MainTabChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = {
-      _MainTab.perluDiisi: ('Perlu Diisi', countPerluDiisi),
-      _MainTab.riwayat: ('Riwayat', countRiwayat),
-    };
+    final options = [
+      _TabOption(_MainTab.perluDiisi, 'Perlu Diisi', countPerluDiisi),
+      _TabOption(_MainTab.riwayat, 'Riwayat', countRiwayat),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(4),
@@ -244,13 +252,13 @@ class _MainTabChips extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        children: options.entries.map((e) {
-          final isSelected = e.key == value;
-          final label = e.value.$1;
-          final count = e.value.$2;
+        children: options.map((opt) {
+          final isSelected = opt.tab == value;
+          final label = opt.label;
+          final count = opt.count;
           return Expanded(
             child: GestureDetector(
-              onTap: () => onChanged(e.key),
+              onTap: () => onChanged(opt.tab),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(vertical: 9),
@@ -308,6 +316,21 @@ class _LaporanCard extends StatelessWidget {
 
   static final _rupiah = NumberFormat.decimalPattern('id_ID');
 
+  /// Kalau laporan BELUM diisi, langsung buka form Isi Laporan — skip layar
+  /// detail. Kalau SUDAH diisi (riwayat), buka layar detail seperti biasa
+  /// buat lihat-lihat data yang sudah dikirim.
+  void _openReport(BuildContext context) {
+    if (penugasan.sudahLapor) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => PenugasanDetailScreen(id: penugasan.id)),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => IsiLaporanScreen(penugasan: penugasan)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sudahLapor = penugasan.sudahLapor;
@@ -319,9 +342,7 @@ class _LaporanCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => PenugasanDetailScreen(id: penugasan.id)),
-          ),
+          onTap: () => _openReport(context),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -419,9 +440,7 @@ class _LaporanCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => PenugasanDetailScreen(id: penugasan.id)),
-                      ),
+                      onPressed: () => _openReport(context),
                       icon: const Icon(Icons.edit_note, size: 18),
                       label: const Text('Isi Laporan'),
                       style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
