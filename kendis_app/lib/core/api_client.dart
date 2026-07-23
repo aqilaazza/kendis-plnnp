@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,7 +54,7 @@ class ApiClient {
   static Future<Map<String, dynamic>> postMultipart(
     String endpoint,
     Map<String, String> fields,
-    Map<String, File?> files,
+    Map<String, XFile?> files,
   ) async {
     final token = await _getToken();
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
@@ -63,9 +63,16 @@ class ApiClient {
     request.fields.addAll(fields);
 
     for (final entry in files.entries) {
-      if (entry.value != null) {
-        request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value!.path));
-      }
+      final file = entry.value;
+      if (file == null) continue;
+
+      // XFile.readAsBytes() jalan seragam di web MAUPUN Android/iOS/Desktop —
+      // gak perlu percabangan kIsWeb lagi kayak sebelumnya dengan dart:io File
+      // (yang bahkan .path / .readAsBytes()-nya sendiri gak bisa dipakai di web).
+      final bytes = await file.readAsBytes();
+      request.files.add(
+        http.MultipartFile.fromBytes(entry.key, bytes, filename: file.name),
+      );
     }
 
     final streamedRes = await request.send();

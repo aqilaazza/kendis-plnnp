@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
 
 class LaporanService {
@@ -10,11 +10,11 @@ class LaporanService {
     double rupiahTol = 0,
     int odoStart = 0,
     int odoStop = 0,
-    File? fotoBbm,
-    File? fotoParkir,
-    File? fotoTol,
-    File? fotoOdoStart,
-    File? fotoOdoStop,
+    XFile? fotoBbm,
+    XFile? fotoParkir,
+    XFile? fotoTol,
+    XFile? fotoOdoStart,
+    XFile? fotoOdoStop,
   }) async {
     await ApiClient.postMultipart(
       '/laporan/submit.php',
