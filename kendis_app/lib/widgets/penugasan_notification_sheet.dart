@@ -371,7 +371,7 @@ class _TimelineRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: isLast ? 0 : 8),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

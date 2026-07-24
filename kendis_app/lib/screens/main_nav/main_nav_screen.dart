@@ -17,12 +17,15 @@ class _MainNavScreenState extends State<MainNavScreen> {
   int _currentIndex = 0;
 
   // Urutan: Dashboard, Tugas, Kegiatan (center/floating), Laporan, Profil
-  final _screens = const [
-    DashboardScreen(),
-    PenugasanListScreen(),
-    KegiatanScreen(),
-    LaporanScreen(),
-    ProfilScreen(),
+  late final List<Widget> _screens = [
+    DashboardScreen(
+      onNavigateToTugas: () => setState(() => _currentIndex = 1),
+      onNavigateToLaporan: () => setState(() => _currentIndex = 3),
+    ),
+    const PenugasanListScreen(),
+    const KegiatanScreen(),
+    const LaporanScreen(),
+    const ProfilScreen(),
   ];
 
   final _navItems = const [
