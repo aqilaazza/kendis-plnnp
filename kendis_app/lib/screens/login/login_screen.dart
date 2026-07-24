@@ -52,24 +52,48 @@ class _LoginScreenState extends State<LoginScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
+        child: ClipRect(
+          child: Stack(
+          children: [
+            // Ambient blue glow blobs
+            Positioned(
+              top: -140,
+              left: -100,
+              child: _buildGlowBlob(380, AppColors.primary.withOpacity(0.28)),
+            ),
+            Positioned(
+              top: -60,
+              right: -120,
+              child: _buildGlowBlob(340, AppColors.primary.withOpacity(0.22)),
+            ),
+            Positioned(
+              top: 260,
+              left: -140,
+              child: _buildGlowBlob(320, AppColors.accentGold.withOpacity(0.10)),
+            ),
+            Positioned(
+              bottom: -160,
+              right: -100,
+              child: _buildGlowBlob(360, AppColors.primary.withOpacity(0.20)),
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Logo & Branding
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: const BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        shape: BoxShape.circle,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/images/logo-pln1.png',
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.contain,
                       ),
-                      child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 32),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -143,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               prefixIcon: const Icon(Icons.lock_outline, size: 20),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                                   size: 20,
                                 ),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -220,15 +244,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      '© 2026 PLN Nusantara Power. All rights reserved.',
+                      '© ${DateTime.now().year} PLN Nusantara Power. All rights reserved.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
+                    ),
+                  ),
                 ),
               ),
             ),
+          ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlowBlob(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withOpacity(0)],
+          stops: const [0.0, 1.0],
         ),
       ),
     );
@@ -237,7 +278,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary, letterSpacing: 0.6),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.primary,
+        letterSpacing: 0.6,
+      ),
     );
   }
 }
