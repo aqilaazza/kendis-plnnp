@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_nav/main_nav_screen.dart';
+import '../profil/pusat_bantuan_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,11 +17,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nidController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  late final TapGestureRecognizer _bantuanTapRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _bantuanTapRecognizer = TapGestureRecognizer()..onTap = _openPusatBantuan;
+  }
+
+  void _openPusatBantuan() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
+    );
+  }
 
   @override
   void dispose() {
     _nidController.dispose();
     _passwordController.dispose();
+    _bantuanTapRecognizer.dispose();
     super.dispose();
   }
 
@@ -234,6 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontWeight: FontWeight.bold,
                                       decoration: TextDecoration.underline,
                                     ),
+                                    recognizer: _bantuanTapRecognizer,
                                   ),
                                 ],
                               ),
