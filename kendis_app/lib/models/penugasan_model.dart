@@ -23,6 +23,16 @@ class PenugasanModel {
   final int? odoStart;
   final int? odoStop;
 
+  // === Field detail laporan (ikut dari LEFT JOIN laporan_driver) ===
+  final double? literBbm;
+  final double? rupiahBbm;
+  final double? rupiahTol;
+  final double? rupiahParkir;
+  final String? fotoBbmUrl;
+  final String? fotoTolUrl;
+  final String? fotoParkirUrl;
+  final String? tanggalLapor;
+
   PenugasanModel({
     required this.id,
     required this.idRequest,
@@ -47,6 +57,14 @@ class PenugasanModel {
     this.totalPelaporan,
     this.odoStart,
     this.odoStop,
+    this.literBbm,
+    this.rupiahBbm,
+    this.rupiahTol,
+    this.rupiahParkir,
+    this.fotoBbmUrl,
+    this.fotoTolUrl,
+    this.fotoParkirUrl,
+    this.tanggalLapor,
   });
 
   factory PenugasanModel.fromJson(Map<String, dynamic> json) {
@@ -74,6 +92,14 @@ class PenugasanModel {
       totalPelaporan: json['total_pelaporan'] != null ? double.tryParse(json['total_pelaporan'].toString()) : null,
       odoStart: json['odo_start'] != null ? int.tryParse(json['odo_start'].toString()) : null,
       odoStop: json['odo_stop'] != null ? int.tryParse(json['odo_stop'].toString()) : null,
+      literBbm: json['liter_bbm'] != null ? double.tryParse(json['liter_bbm'].toString()) : null,
+      rupiahBbm: json['rupiah_bbm'] != null ? double.tryParse(json['rupiah_bbm'].toString()) : null,
+      rupiahTol: json['rupiah_tol'] != null ? double.tryParse(json['rupiah_tol'].toString()) : null,
+      rupiahParkir: json['rupiah_parkir'] != null ? double.tryParse(json['rupiah_parkir'].toString()) : null,
+      fotoBbmUrl: json['foto_bbm'],
+      fotoTolUrl: json['foto_tol'],
+      fotoParkirUrl: json['foto_parkir'],
+      tanggalLapor: json['tanggal_lapor'],
     );
   }
 
@@ -82,6 +108,10 @@ class PenugasanModel {
 
   /// true jika laporan driver untuk penugasan ini sudah pernah dikirim
   bool get sudahLapor => totalPelaporan != null;
+
+  /// Harga per liter dihitung balik dari total rupiah_bbm / liter_bbm,
+  /// karena backend cuma nyimpen totalnya (bukan harga satuan terpisah).
+  double get hargaPerLiter => (literBbm != null && literBbm! > 0 && rupiahBbm != null) ? rupiahBbm! / literBbm! : 0;
 
   /// Label status yang ramah untuk ditampilkan ke driver
   String get statusLabel {

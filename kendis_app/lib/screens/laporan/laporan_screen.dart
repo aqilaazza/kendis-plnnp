@@ -5,6 +5,7 @@ import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
 import '../penugasan/penugasan_detail_screen.dart';
 import 'isi_laporan_screen.dart';
+import 'detail_laporan_screen.dart';
 
 enum _MainTab { perluDiisi, riwayat }
 
@@ -317,12 +318,13 @@ class _LaporanCard extends StatelessWidget {
   static final _rupiah = NumberFormat.decimalPattern('id_ID');
 
   /// Kalau laporan BELUM diisi, langsung buka form Isi Laporan — skip layar
-  /// detail. Kalau SUDAH diisi (riwayat), buka layar detail seperti biasa
-  /// buat lihat-lihat data yang sudah dikirim.
+  /// detail. Kalau SUDAH diisi (riwayat), buka layar Detail Laporan yang
+  /// nampilin data laporan yang sudah dikirim (odometer, BBM, tol, parkir,
+  /// foto bukti) — bukan detail penugasan biasa.
   void _openReport(BuildContext context) {
     if (penugasan.sudahLapor) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => PenugasanDetailScreen(id: penugasan.id)),
+        MaterialPageRoute(builder: (_) => DetailLaporanScreen(penugasan: penugasan)),
       );
     } else {
       Navigator.of(context).push(

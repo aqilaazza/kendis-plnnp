@@ -22,7 +22,10 @@ $stmt = $pdo->prepare(
             r.kegiatan, r.jumlah_penumpang, r.status AS status_request,
             k.nopol, k.merk, k.warna,
             up.nama AS nama_pemohon, up.no_hp AS hp_pemohon,
-            ld.total_pelaporan, ld.odo_start, ld.odo_stop
+            ld.total_pelaporan, ld.odo_start, ld.odo_stop,
+            ld.liter_bbm, ld.rupiah_bbm, ld.rupiah_tol, ld.rupiah_parkir,
+            ld.foto_bbm, ld.foto_tol, ld.foto_parkir,
+            ld.created_at AS tanggal_lapor
      FROM penugasan p
      JOIN request_kendis r ON r.id = p.id_request
      LEFT JOIN kendaraan k ON k.id = p.id_kendaraan

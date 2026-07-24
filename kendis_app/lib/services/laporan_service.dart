@@ -1,5 +1,6 @@
 import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
+import '../models/laporan_detail_model.dart';
 
 class LaporanService {
   static Future<void> submit({
@@ -35,5 +36,12 @@ class LaporanService {
         'foto_odo_stop': fotoOdoStop,
       },
     );
+  }
+
+  /// Ambil detail laporan yang SUDAH dikirim driver untuk satu penugasan.
+  /// Dipakai di DetailLaporanScreen (dibuka dari kartu Riwayat).
+  static Future<LaporanDetailModel> getDetail(int idPenugasan) async {
+    final res = await ApiClient.get('/laporan/detail.php?id_penugasan=$idPenugasan');
+    return LaporanDetailModel.fromJson(res['data']);
   }
 }
