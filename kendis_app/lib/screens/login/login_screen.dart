@@ -192,18 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             onSubmitted: (_) => _handleLogin(),
                           ),
 
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                              child: Text(
-                                'Lupa Password?',
-                                style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 20),
 
                           SizedBox(
                             width: double.infinity,
