@@ -464,6 +464,9 @@ Future<void> _confirmLogout(BuildContext context) async {
   Widget _buildProfileCard(BuildContext context, dynamic user) {
     final String nama = user?.nama ?? '-';
     final String nid = user?.nid ?? '-';
+    final String noSim = user?.noSim ?? '-';
+    final String noHp = user?.noHp ?? '-';
+    final String role = user?.role ?? '-';
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -548,6 +551,9 @@ Future<void> _confirmLogout(BuildContext context) async {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // =============================================================
+                // NAMA
+                // =============================================================
                 Text(
                   nama,
                   maxLines: 1,
@@ -558,17 +564,45 @@ Future<void> _confirmLogout(BuildContext context) async {
                     color: AppColors.primary,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  nid,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
+
+                const SizedBox(height: 6),
+
+                // =============================================================
+                // NID
+                // =============================================================
+                _profileInfoRow(
+                  icon: Icons.badge_outlined,
+                  label: 'NID',
+                  value: nid,
                 ),
-                const SizedBox(height: 5),
+
+                const SizedBox(height: 4),
+
+                // =============================================================
+                // NO HP
+                // =============================================================
+                _profileInfoRow(
+                  icon: Icons.phone_outlined,
+                  label: 'No. HP',
+                  value: noHp,
+                ),
+
+                const SizedBox(height: 4),
+
+                // =============================================================
+                // NO SIM
+                // =============================================================
+                _profileInfoRow(
+                  icon: Icons.credit_card_outlined,
+                  label: 'No. SIM',
+                  value: noSim,
+                ),
+
+                const SizedBox(height: 6),
+
+                // =============================================================
+                // ROLE
+                // =============================================================
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
@@ -581,15 +615,17 @@ Future<void> _confirmLogout(BuildContext context) async {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.badge_outlined,
+                      const Icon(
+                        Icons.person_outline,
                         size: 10,
                         color: AppColors.primary,
                       ),
                       const SizedBox(width: 3),
-                      const Text(
-                        'Driver',
-                        style: TextStyle(
+                      Text(
+                        role.isNotEmpty
+                            ? role[0].toUpperCase() + role.substring(1)
+                            : '-',
+                        style: const TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primary,
@@ -603,6 +639,49 @@ Future<void> _confirmLogout(BuildContext context) async {
           ),
         ],
       ),
+    );
+  }
+
+  // =========================================================================
+  // PROFILE INFO ROW
+  // =========================================================================
+
+  Widget _profileInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 11,
+          color: AppColors.textMuted,
+        ),
+
+        const SizedBox(width: 5),
+
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 9,
+            color: AppColors.textMuted,
+          ),
+        ),
+
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
