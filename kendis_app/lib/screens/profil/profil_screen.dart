@@ -14,46 +14,165 @@ import 'tentang_aplikasi_screen.dart';
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
 
-  Future<void> _confirmLogout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text('Keluar Akun'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+Future<void> _confirmLogout(BuildContext context) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          width: 190,
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            14,
+            16,
+            14,
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Keluar',
-              style: TextStyle(
-                color: AppColors.danger,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // =========================================================
+              // ICON + JUDUL KELUAR
+              // =========================================================
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.logout_outlined,
+                    size: 13,
+                    color: AppColors.danger,
+                  ),
 
-    if (confirm == true && context.mounted) {
-      await context.read<AuthProvider>().logout();
+                  const SizedBox(width: 6),
 
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
+                  const Text(
+                    'Keluar',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+
+              // =========================================================
+              // PESAN KONFIRMASI
+              // =========================================================
+              const Text(
+                'Apakah Anda yakin ingin keluar dari\naplikasi?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 8,
+                  height: 1.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // =========================================================
+              // TOMBOL OK
+              // =========================================================
+              SizedBox(
+                width: double.infinity,
+                height: 28,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx, true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 6),
+
+              // =========================================================
+              // TOMBOL BATAL
+              // =========================================================
+              SizedBox(
+                width: double.infinity,
+                height: 28,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx, false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    side: BorderSide(
+                      color: Colors.grey.shade200,
+                      width: 1,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          (route) => false,
-        );
-      }
+        ),
+      );
+    },
+  );
+
+  // =========================================================
+  // PROSES LOGOUT
+  // =========================================================
+
+  if (confirm == true && context.mounted) {
+    await context.read<AuthProvider>().logout();
+
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        ),
+        (route) => false,
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
