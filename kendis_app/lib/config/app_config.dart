@@ -5,7 +5,8 @@ class AppConfig {
 
   /// Base URL API
   static const List<String> candidateUrls = [
-    'https://api.umumcsr.com/kendis',
+    // 'https://api.umumcsr.com/kendis'
+    'https://sharie-untuberculous-devona.ngrok-free.dev/kendis-plnnp/kendis_api',
   ];
 
   static const String _cacheKey = 'cached_base_url';
