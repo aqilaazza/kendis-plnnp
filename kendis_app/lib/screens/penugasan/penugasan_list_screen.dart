@@ -12,6 +12,10 @@ class PenugasanListScreen extends StatefulWidget {
 }
 
 class _PenugasanListScreenState extends State<PenugasanListScreen> {
+  // NOTE: Figma menggunakan filter berbasis waktu (Semua / Minggu Ini / Bulan
+  // Ini), bukan filter status. Jika backend masih mengharapkan status
+  // (semua/menunggu/diproses/selesai), sesuaikan value di bawah ini dengan
+  // yang didukung PenugasanService.getList().
   String _filter = 'semua';
   late Future<List<PenugasanModel>> _future;
 
@@ -31,16 +35,62 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Row(
-              children: [
-                Expanded(
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFEAF3FB),
+              Color(0xFFF5F9FC),
+            ],
+          ),
+        ),
+        child: Column(
+          children: [
+                /// HEADER
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  color: Colors.white,
                   child: Column(
-                    children: const [
-                      Align(
+                    children: [
+                      /// Logo - Nama - Notifikasi
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.grey.shade300,
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              "Kendis",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              size: 30,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           "Riwayat Penugasan",
@@ -51,164 +101,252 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Align(
+
+                      const SizedBox(height: 6),
+
+                      const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "Daftar perjalanan yang telah dikirim.",
+                          "Daftar penugasan perjalanan yang telah terkirim.",
                           style: TextStyle(
+                            fontSize: 14,
                             color: AppColors.textMuted,
-                            fontSize: 13,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 100),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
+
+                        /// ================= BANNER (image + overlay) =================
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: SizedBox(
+                              height: 150,
+                              width: double.infinity,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  // Ganti path asset sesuai gambar armada yang tersedia.
+                                  Image.asset(
+                                    'assets/images/penugasan_screen.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stack) => Container(
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withOpacity(.15),
+                                          Colors.black.withOpacity(.75),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: const [
+                                        Text(
+                                          "PLN NUSANTARA POWER UP PAITON",
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: .5,
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          "Kualitas Armada Nomor Satu",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          "Mendukung operasional pembangkit listrik dengan armada kendaraan yang...",
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        /// ================= FILTER (waktu) =================
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _FilterChip(
+                                  label: 'Semua',
+                                  value: 'semua',
+                                  selected: _filter,
+                                  onTap: _setFilter,
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'Minggu Ini',
+                                  value: 'minggu_ini',
+                                  selected: _filter,
+                                  onTap: _setFilter,
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'Bulan Ini',
+                                  value: 'bulan_ini',
+                                  selected: _filter,
+                                  onTap: _setFilter,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        /// ================= SEARCH =================
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: "Cari laporan...",
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: const Color(0xFFF5F7FA),
+                              prefixIconColor: Colors.grey,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        /// ================= LIST =================
+                        FutureBuilder<List<PenugasanModel>>(
+                          future: _future,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 40),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Center(child: Text('Gagal memuat: ${snapshot.error}')),
+                              );
+                            }
+                            final list = snapshot.data ?? [];
+                            if (list.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Center(
+                                  child: Text(
+                                    'Belum ada penugasan.',
+                                    style: TextStyle(color: AppColors.textMuted),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Column(
+                                children: [
+                                  for (final p in list) _PenugasanTile(penugasan: p),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+
+                        /// ================= RINGKASAN BULAN INI =================
+                        // TODO: sambungkan ke data agregat asli (jumlah laporan,
+                        // total KM, total biaya) alih-alih nilai contoh berikut.
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  "RINGKASAN BULAN INI",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: .5,
+                                  ),
+                                ),
+                                SizedBox(height: 14),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _SummaryStat(value: "12", label: "LAPORAN"),
+                                    _SummaryStat(value: "840", label: "KM JARAK"),
+                                    _SummaryStat(value: "1.2jt", label: "TOTAL RP"),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal:20),
-            child: Container(
-              height:120,
-              width:double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    Text(
-                      "Kualitas Armada Nomor Satu",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize:18,
-                      ),
-                    ),
-
-                    SizedBox(height:8),
-
-                    Text(
-                      "Menjadi armada operasional terpercaya.",
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
-                    ),
-
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: 'Semua',
-                    value: 'semua',
-                    selected: _filter,
-                    onTap: _setFilter,
-                  ),
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: 'Menunggu',
-                    value: 'menunggu',
-                    selected: _filter,
-                    onTap: _setFilter,
-                  ),
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: 'Diproses',
-                    value: 'diproses',
-                    selected: _filter,
-                    onTap: _setFilter,
-                  ),
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: 'Selesai',
-                    value: 'selesai',
-                    selected: _filter,
-                    onTap: _setFilter,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "Cari laporan...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: const Color(0xFFF5F7FA),
-                prefixIconColor: Colors.grey,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          Expanded(
-            child: FutureBuilder<List<PenugasanModel>>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Gagal memuat: ${snapshot.error}'));
-                }
-                final list = snapshot.data ?? [];
-                if (list.isEmpty) {
-                  return Center(child: Text('Belum ada penugasan.', style: TextStyle(color: AppColors.textMuted)));
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: list.length,
-                  itemBuilder: (context, index) {
-                    final p = list[index];
-                    return _PenugasanTile(penugasan: p);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -229,18 +367,52 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
+          color: isSelected ? AppColors.primary.withOpacity(.08) : Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary.withOpacity(.35) : const Color(0xFFE8EDF2),
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textBody,
+            color: isSelected ? AppColors.primary : AppColors.textBody,
             fontSize: 13,
-            fontWeight: FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SummaryStat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _SummaryStat({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 9,
+            letterSpacing: .5,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -281,6 +453,20 @@ class _PenugasanTile extends StatelessWidget {
     }
   }
 
+  IconData get _statusIcon {
+    switch (penugasan.statusRequest) {
+      case 'on_trip':
+        return Icons.local_shipping_outlined;
+      case 'completed':
+      case 'rated':
+        return Icons.check_circle_outline;
+      case 'cancelled':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.description_outlined;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -306,16 +492,41 @@ class _PenugasanTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// ================= HEADER =================
+                /// ================= HEADER: icon + tanggal/kode + status =================
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _statusColor.withOpacity(.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(_statusIcon, size: 18, color: _statusColor),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        "${penugasan.tanggalBerangkat} • ${penugasan.jamBerangkat}",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "${penugasan.tanggalBerangkat} • ${penugasan.jamBerangkat} WIB",
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            penugasan.kodeRequest,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     Container(
@@ -339,9 +550,54 @@ class _PenugasanTile extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
+                Container(height: 1, color: const Color(0xFFEFF2F6)),
+                const SizedBox(height: 14),
 
-                /// ================= TUJUAN =================
+                /// ================= RUTE PERJALANAN =================
+                const Text(
+                  "RUTE PERJALANAN",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      penugasan.tempatTujuan.toUpperCase(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if ((penugasan.lokasiTujuan ?? '').isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(Icons.arrow_forward, size: 16, color: AppColors.primary),
+                      ),
+                      Expanded(
+                        child: Text(
+                          penugasan.lokasiTujuan!,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 16,
+                            color: AppColors.textBody,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                /// ================= PEMOHON / KENDARAAN =================
                 Row(
                   children: [
                     Expanded(
@@ -349,56 +605,75 @@ class _PenugasanTile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "TUJUAN",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey,
-                            ),
+                            "PEMOHON",
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            penugasan.tempatTujuan.toUpperCase(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            penugasan.namaPemohon ?? '-',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.arrow_forward,
-                      color: AppColors.primary,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "KENDARAAN",
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            (penugasan.nopol == null && penugasan.merkKendaraan == null)
+                                ? '-'
+                                : "${penugasan.nopol ?? '-'} (${penugasan.merkKendaraan ?? '-'})",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.primary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 15),
-
-                /// ================= KEGIATAN =================
-                Text(
-                  penugasan.kegiatan,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-
                 const SizedBox(height: 18),
 
-                /// ================= JADWAL =================
+                /// ================= JADWAL PERJALANAN =================
+                const Text(
+                  "JADWAL PERJALANAN",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .3,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: _InfoBox(
                         title: "BERANGKAT",
-                        value: penugasan.jamBerangkat,
+                        value: "${penugasan.tanggalBerangkat}, ${penugasan.jamBerangkat}",
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
+                    ),
                     Expanded(
                       child: _InfoBox(
                         title: "KEMBALI",
-                        value: penugasan.jamKembali ?? "-",
+                        value: (penugasan.tanggalKembali == null && penugasan.jamKembali == null)
+                            ? "-"
+                            : "${penugasan.tanggalKembali ?? '-'}, ${penugasan.jamKembali ?? '-'}",
                       ),
                     ),
                   ],
@@ -410,14 +685,7 @@ class _PenugasanTile extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        child: const Text("Detail"),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
+                      child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -428,7 +696,40 @@ class _PenugasanTile extends StatelessWidget {
                             ),
                           );
                         },
-                        child: const Text("Laporan"),
+                        icon: const Icon(Icons.visibility_outlined, size: 16),
+                        label: const Text("Detail"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textBody,
+                          side: const BorderSide(color: Color(0xFFDDE3EA)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PenugasanDetailScreen(
+                                id: penugasan.id,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text("Laporan Selesai"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8A6D1E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],
@@ -473,7 +774,9 @@ class _InfoBox extends StatelessWidget {
             value,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
