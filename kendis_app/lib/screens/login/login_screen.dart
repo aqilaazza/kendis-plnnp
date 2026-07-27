@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_nav/main_nav_screen.dart';
+import '../profil/pusat_bantuan_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,11 +17,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nidController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  late final TapGestureRecognizer _bantuanTapRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _bantuanTapRecognizer = TapGestureRecognizer()..onTap = _openPusatBantuan;
+  }
+
+  void _openPusatBantuan() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
+    );
+  }
 
   @override
   void dispose() {
     _nidController.dispose();
     _passwordController.dispose();
+    _bantuanTapRecognizer.dispose();
     super.dispose();
   }
 
@@ -31,10 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainNavScreen()),
-      );
-    } else if (auth.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.errorMessage!), backgroundColor: AppColors.danger),
       );
     }
   }
@@ -52,24 +64,48 @@ class _LoginScreenState extends State<LoginScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
+        child: ClipRect(
+          child: Stack(
+          children: [
+            // Ambient blue glow blobs
+            Positioned(
+              top: -140,
+              left: -100,
+              child: _buildGlowBlob(380, AppColors.primary.withOpacity(0.28)),
+            ),
+            Positioned(
+              top: -60,
+              right: -120,
+              child: _buildGlowBlob(340, AppColors.primary.withOpacity(0.22)),
+            ),
+            Positioned(
+              top: 260,
+              left: -140,
+              child: _buildGlowBlob(320, AppColors.accentGold.withOpacity(0.10)),
+            ),
+            Positioned(
+              bottom: -160,
+              right: -100,
+              child: _buildGlowBlob(360, AppColors.primary.withOpacity(0.20)),
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Logo & Branding
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: const BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        shape: BoxShape.circle,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/images/logo-pln1.png',
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.contain,
                       ),
-                      child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 32),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -122,6 +158,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
 
+                          if (auth.errorMessage != null) ...[
+                            _buildErrorBanner(auth),
+                            const SizedBox(height: 16),
+                          ],
+
                           _buildLabel('Username'),
                           const SizedBox(height: 8),
                           TextField(
@@ -143,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               prefixIcon: const Icon(Icons.lock_outline, size: 20),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                                   size: 20,
                                 ),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -152,18 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             onSubmitted: (_) => _handleLogin(),
                           ),
 
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                              child: Text(
-                                'Lupa Password?',
-                                style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 20),
 
                           SizedBox(
                             width: double.infinity,
@@ -210,6 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontWeight: FontWeight.bold,
                                       decoration: TextDecoration.underline,
                                     ),
+                                    recognizer: _bantuanTapRecognizer,
                                   ),
                                 ],
                               ),
@@ -220,15 +251,82 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      '© 2026 PLN Nusantara Power. All rights reserved.',
+                      '© ${DateTime.now().year} PLN Nusantara Power. All rights reserved.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
+                    ),
+                  ),
                 ),
               ),
             ),
+          ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(AuthProvider auth) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.danger.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 20, color: AppColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  auth.errorMessage!,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.danger,
+                  ),
+                ),
+                if (auth.isServerError) ...[
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: _openPusatBantuan,
+                    child: Text(
+                      'Hubungi Admin',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.danger,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlowBlob(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withOpacity(0)],
+          stops: const [0.0, 1.0],
         ),
       ),
     );
@@ -237,7 +335,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary, letterSpacing: 0.6),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.primary,
+        letterSpacing: 0.6,
+      ),
     );
   }
 }
