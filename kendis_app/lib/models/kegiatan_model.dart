@@ -4,6 +4,7 @@ class KegiatanModel {
   final String tujuan;
   final String tanggal;
   final String jam;
+  final int? idDriver;
 
   KegiatanModel({
     required this.id,
@@ -11,18 +12,51 @@ class KegiatanModel {
     required this.tujuan,
     required this.tanggal,
     required this.jam,
+    required this.idDriver,
   });
 
-  factory KegiatanModel.fromJson(Map<String, dynamic> json) {
+  // ============================================================
+  // CEK APAKAH KEGIATAN SUDAH DIAMBIL DRIVER
+  // ============================================================
+
+  bool get sudahDiambil => idDriver != null;
+
+  factory KegiatanModel.fromJson(
+    Map<String, dynamic> json,
+  ) {
     return KegiatanModel(
-      id: int.parse(json['id'].toString()),
-      namaKegiatan: json['nama_kegiatan'] ?? '',
-      tujuan: json['tujuan'] ?? '',
-      tanggal: json['tanggal'] ?? '',
-      jam: json['jam'] ?? '',
+      id: int.parse(
+        json['id'].toString(),
+      ),
+
+      namaKegiatan:
+          json['nama_kegiatan']?.toString() ?? '',
+
+      tujuan:
+          json['tujuan']?.toString() ?? '',
+
+      tanggal:
+          json['tanggal']?.toString() ?? '',
+
+      jam:
+          json['jam']?.toString() ?? '',
+
+      idDriver:
+          json['id_driver'] == null ||
+                  json['id_driver'].toString() == '0' ||
+                  json['id_driver'].toString().isEmpty
+              ? null
+              : int.tryParse(
+                  json['id_driver'].toString(),
+                ),
     );
   }
 }
+
+
+// ============================================================
+// NOTIFIKASI MODEL
+// ============================================================
 
 class NotifikasiModel {
   final int id;
@@ -39,13 +73,21 @@ class NotifikasiModel {
     required this.createdAt,
   });
 
-  factory NotifikasiModel.fromJson(Map<String, dynamic> json) {
+  factory NotifikasiModel.fromJson(
+    Map<String, dynamic> json,
+  ) {
     return NotifikasiModel(
-      id: int.parse(json['id'].toString()),
-      judul: json['judul'] ?? '',
-      pesan: json['pesan'] ?? '',
-      isRead: json['is_read'].toString() == '1',
-      createdAt: json['created_at'] ?? '',
+      id: int.parse(
+        json['id'].toString(),
+      ),
+      judul:
+          json['judul']?.toString() ?? '',
+      pesan:
+          json['pesan']?.toString() ?? '',
+      isRead:
+          json['is_read'].toString() == '1',
+      createdAt:
+          json['created_at']?.toString() ?? '',
     );
   }
 }
