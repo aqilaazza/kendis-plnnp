@@ -48,10 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainNavScreen()),
       );
-    } else if (auth.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.errorMessage!), backgroundColor: AppColors.danger),
-      );
     }
   }
 
@@ -162,6 +158,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
 
+                          if (auth.errorMessage != null) ...[
+                            _buildErrorBanner(auth),
+                            const SizedBox(height: 16),
+                          ],
+
                           _buildLabel('Username'),
                           const SizedBox(height: 8),
                           TextField(
@@ -263,6 +264,56 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(AuthProvider auth) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.danger.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 20, color: AppColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  auth.errorMessage!,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.danger,
+                  ),
+                ),
+                if (auth.isServerError) ...[
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: _openPusatBantuan,
+                    child: Text(
+                      'Hubungi Admin',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.danger,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
