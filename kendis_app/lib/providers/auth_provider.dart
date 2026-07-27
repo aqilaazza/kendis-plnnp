@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/api_client.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
@@ -8,6 +9,12 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus status = AuthStatus.unknown;
   UserModel? currentUser;
   String? errorMessage;
+
+  /// true jika error yang terjadi disebabkan oleh server/koneksi
+  /// (bukan karena username/password salah). Dipakai di UI untuk
+  /// menampilkan opsi "Hubungi Admin".
+  bool isServerError = false;
+
   bool isLoading = false;
 
   Future<void> checkLoginStatus() async {
@@ -24,6 +31,7 @@ class AuthProvider extends ChangeNotifier {
   ) async {
     isLoading = true;
     errorMessage = null;
+    isServerError = false;
     notifyListeners();
 
     try {
@@ -40,16 +48,41 @@ class AuthProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      errorMessage = e.toString().replaceFirst(
-            'ApiException: ',
-            '',
-          );
+      _setErrorFromException(e);
 
       isLoading = false;
 
       notifyListeners();
 
       return false;
+    }
+  }
+
+  /// Menentukan pesan error & apakah ini masalah server/koneksi
+  /// atau memang username/password yang salah.
+  void _setErrorFromException(Object e) {
+    if (e is ApiException) {
+      final statusCode = e.statusCode;
+
+      if (statusCode == 401) {
+        // Kredensial salah
+        errorMessage = 'Username atau password yang Anda masukkan salah.';
+        isServerError = false;
+      } else if (statusCode == null || statusCode >= 500) {
+        // Gagal konek ke semua kandidat URL, atau server error internal
+        errorMessage =
+            'Server sedang bermasalah. Silakan coba lagi beberapa saat, atau hubungi admin jika masalah berlanjut.';
+        isServerError = true;
+      } else {
+        // Error lain dari API (validasi, dsb) — tampilkan apa adanya
+        errorMessage = e.message;
+        isServerError = false;
+      }
+    } else {
+      // Exception di luar ApiException (misal SocketException, dsb)
+      errorMessage =
+          'Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau hubungi admin.';
+      isServerError = true;
     }
   }
 
@@ -101,7 +134,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // UPDATE PROFILE
+  // GANTI PASSWORD
   // ============================================================
   Future<bool> changePassword({
     required String passwordLama,
