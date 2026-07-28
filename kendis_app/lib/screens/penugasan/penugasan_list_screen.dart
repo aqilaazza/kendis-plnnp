@@ -18,11 +18,15 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   // yang didukung PenugasanService.getList().
   String _filter = 'semua';
   late Future<List<PenugasanModel>> _future;
+  late Future<Map<String, dynamic>> _ringkasanFuture;
 
   @override
   void initState() {
     super.initState();
     _future = PenugasanService.getList(status: _filter);
+    // getRingkasan() sekarang sudah ada di PenugasanService (menyambung ke
+    // endpoint ringkasan.php yang baru).
+    _ringkasanFuture = PenugasanService.getRingkasan();
   }
 
   void _setFilter(String filter) {
@@ -93,7 +97,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "Riwayat Penugasan",
+                          "Riwayat Pelaporan",
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -107,7 +111,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "Daftar penugasan perjalanan yang telah terkirim.",
+                          "Daftar laporan perjalanan yang telah terkirim.",
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textMuted,
@@ -209,22 +213,22 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                             child: Row(
                               children: [
                                 _FilterChip(
-                                  label: 'Semua',
+                                  label: 'Aktif',
+                                  value: 'aktif',
+                                  selected: _filter,
+                                  onTap: _setFilter,
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'Semmua',
                                   value: 'semua',
                                   selected: _filter,
                                   onTap: _setFilter,
                                 ),
                                 const SizedBox(width: 8),
                                 _FilterChip(
-                                  label: 'Minggu Ini',
-                                  value: 'minggu_ini',
-                                  selected: _filter,
-                                  onTap: _setFilter,
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: 'Bulan Ini',
-                                  value: 'bulan_ini',
+                                  label: 'Selesai',
+                                  value: 'selesai',
                                   selected: _filter,
                                   onTap: _setFilter,
                                 ),
@@ -305,8 +309,6 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                         ),
 
                         /// ================= RINGKASAN BULAN INI =================
-                        // TODO: sambungkan ke data agregat asli (jumlah laporan,
-                        // total KM, total biaya) alih-alih nilai contoh berikut.
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                           child: Container(
@@ -318,8 +320,8 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
+                              children: [
+                                const Text(
                                   "RINGKASAN BULAN INI",
                                   style: TextStyle(
                                     color: Colors.white70,
@@ -328,14 +330,28 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                     letterSpacing: .5,
                                   ),
                                 ),
-                                SizedBox(height: 14),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    _SummaryStat(value: "12", label: "LAPORAN"),
-                                    _SummaryStat(value: "840", label: "KM JARAK"),
-                                    _SummaryStat(value: "1.2jt", label: "TOTAL RP"),
-                                  ],
+                                const SizedBox(height: 14),
+                                FutureBuilder<Map<String, dynamic>>(
+                                  future: _ringkasanFuture,
+                                  builder: (context, snap) {
+                                    final r = snap.data;
+                                    final jumlahLaporan = r?['jumlah_laporan']?.toString() ?? '-';
+                                    final totalKm = r?['total_km']?.toString() ?? '-';
+                                    final totalRupiah = r?['total_rupiah'];
+                                    final totalRpLabel = totalRupiah == null
+                                        ? '-'
+                                        : totalRupiah >= 1000000
+                                            ? '${(totalRupiah / 1000000).toStringAsFixed(1)}jt'
+                                            : '${(totalRupiah / 1000).round()}rb';
+                                    return Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _SummaryStat(value: jumlahLaporan, label: "LAPORAN"),
+                                        _SummaryStat(value: totalKm, label: "KM JARAK"),
+                                        _SummaryStat(value: totalRpLabel, label: "TOTAL RP"),
+                                      ],
+                                    );
+                                  },
                                 ),
                               ],
                             ),
