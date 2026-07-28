@@ -130,7 +130,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         /// ================= PROGRESS TRACKER =================
-                        _ProgressTracker(statusRequest: statusRequest, isBerangkat: isBerangkat, statusValidasi: statusValidasi),
+                        _ProgressTracker(data: d),
 
                         const SizedBox(height: 20),
 
@@ -234,18 +234,6 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                                         children: [
                                           Text(namaDriver,
                                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                                          if (d['tipe_driver'] == 'official') ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFF0F2F5),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: const Text("OFFICIAL",
-                                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
-                                            ),
-                                          ],
                                         ],
                                       ),
                                       const SizedBox(height: 8),
@@ -347,8 +335,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                     color: Colors.white,
                     border: Border(top: BorderSide(color: Color(0xFFEFF2F6))),
                   ),
-                  child: Align(
-                    alignment: Alignment.centerRight,
+                  child: Center(
                     child: ElevatedButton.icon(
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.close, size: 18),
@@ -357,7 +344,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                         backgroundColor: AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
@@ -411,81 +398,293 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Tracker 3 tahap (Diajukan / Persetujuan / Driver Berangkat). Backend saat
-/// ini tidak mengirim timestamp per-tahap, jadi hanya status selesai/belum
-/// yang ditampilkan — tambahkan field seperti created_at/approved_at di API
-/// kalau ingin menampilkan tanggal per-tahap seperti pada Figma.
-class _ProgressTracker extends StatelessWidget {
-  final String? statusRequest;
-  final bool isBerangkat;
-  final dynamic statusValidasi;
-
-  const _ProgressTracker({required this.statusRequest, required this.isBerangkat, required this.statusValidasi});
+/// Ringkasan progres (kartu biru "Perjalanan — Step 5 dari 6 — 83% Progress")
+/// yang bisa diklik untuk membuka/menutup rincian "Riwayat Proses" di
+/// bawahnya (daftar 6 tahap dengan status & waktu masing-masing).
+///
+/// Waktu tiap tahap dan status selesai/belumnya sekarang ditarik dari data
+/// yang sudah nyata ada di backend (lihat detail.php): tanggal_diajukan
+/// (request_kendis.created_at), tanggal_persetujuan_atasan/tanggal_driver_
+/// ditunjuk/tanggal_persetujuan_pool/tanggal_mulai (dari tabel notifikasi),
+/// dan tanggal_selesai (laporan_driver.created_at). Sebuah tahap dianggap
+/// "selesai" kalau timestamp-nya ada isinya; status_request/is_berangkat
+/// cuma dipakai sebagai fallback kalau timestamp itu ternyata null (mis.
+/// data lama sebelum notifikasi tercatat).
+class _ProgressTracker extends StatefulWidget {
+  final Map<String, dynamic> data;
+  const _ProgressTracker({required this.data});
 
   @override
-  Widget build(BuildContext context) {
-    final step2Done = statusValidasi == 'approved' ||
-        ['approved_pool', 'on_trip', 'completed', 'rated'].contains(statusRequest);
-    final step3Done = isBerangkat || ['on_trip', 'completed', 'rated'].contains(statusRequest);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        children: [
-          Expanded(child: _StepNode(label: "DIAJUKAN", done: true)),
-          _StepLine(done: step2Done),
-          Expanded(child: _StepNode(label: "PERSETUJUAN", done: step2Done)),
-          _StepLine(done: step3Done),
-          Expanded(child: _StepNode(label: "DRIVER BERANGKAT", done: step3Done)),
-        ],
-      ),
-    );
-  }
+  State<_ProgressTracker> createState() => _ProgressTrackerState();
 }
 
-class _StepNode extends StatelessWidget {
-  final String label;
-  final bool done;
-  const _StepNode({required this.label, required this.done});
+class _ProgressTrackerState extends State<_ProgressTracker> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final color = done ? AppColors.success : const Color(0xFFD8DEE5);
+    final d = widget.data;
+    final statusRequest = d['status_request']?.toString();
+    final isBerangkat = d['is_berangkat'].toString() == '1';
+
+    final tglPersetujuanAtasan = d['tanggal_persetujuan_atasan']?.toString();
+    final tglDriverDitunjuk = d['tanggal_driver_ditunjuk']?.toString();
+    final tglPersetujuanPool = d['tanggal_persetujuan_pool']?.toString();
+    final tglMulai = d['tanggal_mulai']?.toString();
+    final tglSelesai = d['tanggal_selesai']?.toString() ?? d['tanggal_lapor']?.toString();
+
+    // Fallback ke status enum kalau timestamp-nya null (mis. data lawas).
+    final persetujuanAtasanDone = tglPersetujuanAtasan != null ||
+        ['approved_atasan', 'pool_received', 'driver_assigned', 'approved_pool', 'on_trip', 'completed', 'rated'].contains(statusRequest);
+    final driverDitunjukDone = tglDriverDitunjuk != null ||
+        ['driver_assigned', 'approved_pool', 'on_trip', 'completed', 'rated'].contains(statusRequest);
+    final persetujuanPoolDone = tglPersetujuanPool != null || ['approved_pool', 'on_trip', 'completed', 'rated'].contains(statusRequest);
+    final perjalananDone = tglMulai != null || isBerangkat || ['on_trip', 'completed', 'rated'].contains(statusRequest);
+    final selesaiDone = tglSelesai != null || ['completed', 'rated'].contains(statusRequest);
+
+    final steps = <_TimelineStep>[
+      _TimelineStep(
+        label: "Diajukan",
+        desc: "Request berhasil diajukan",
+        icon: Icons.assignment_outlined,
+        done: true,
+        time: d['tanggal_diajukan']?.toString(),
+      ),
+      _TimelineStep(
+        label: "Persetujuan Atasan",
+        desc: "Disetujui oleh atasan",
+        icon: Icons.how_to_reg_outlined,
+        done: persetujuanAtasanDone,
+        time: tglPersetujuanAtasan,
+      ),
+      _TimelineStep(
+        label: "Driver Ditunjuk",
+        desc: "Driver telah ditunjuk",
+        icon: Icons.person_pin_circle_outlined,
+        done: driverDitunjukDone,
+        time: tglDriverDitunjuk,
+      ),
+      _TimelineStep(
+        label: "Persetujuan Pool",
+        desc: "Disetujui oleh pool",
+        icon: Icons.verified_outlined,
+        done: persetujuanPoolDone,
+        time: tglPersetujuanPool,
+      ),
+      _TimelineStep(
+        label: "Perjalanan",
+        desc: "Sedang dalam perjalanan",
+        icon: Icons.directions_car_filled_rounded,
+        done: perjalananDone,
+        time: tglMulai,
+      ),
+      _TimelineStep(
+        label: "Selesai",
+        desc: "Menunggu perjalanan selesai",
+        icon: Icons.flag_outlined,
+        done: selesaiDone,
+        time: tglSelesai,
+      ),
+    ];
+
+    final currentIndex = steps.indexWhere((s) => !s.done);
+    final allDone = currentIndex == -1;
+    final currentStepNumber = allDone ? steps.length : currentIndex + 1;
+    final progressPercent = ((currentStepNumber / steps.length) * 100).round();
+    final currentLabel = allDone ? "Selesai" : steps[currentIndex].label;
+
     return Column(
       children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Icon(done ? Icons.check : Icons.circle, color: Colors.white, size: done ? 16 : 8),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: done ? AppColors.success : AppColors.textMuted,
+        /// ================= KARTU RINGKASAN =================
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                    child: Icon(
+                      allDone ? Icons.flag_outlined : steps[currentIndex].icon,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            allDone ? "Selesai" : "Sedang Berlangsung",
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(currentLabel,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        const SizedBox(height: 2),
+                        Text("Step $currentStepNumber dari ${steps.length}",
+                            style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text("$progressPercent%",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      const Text("Progress", style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
+
+        const SizedBox(height: 10),
+
+        /// ================= SEGMENTED PROGRESS BAR =================
+        Row(
+          children: [
+            for (int i = 0; i < steps.length; i++) ...[
+              if (i != 0) const SizedBox(width: 4),
+              Expanded(
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: i < currentStepNumber ? AppColors.primary : const Color(0xFFE3E7EC),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+
+        /// ================= RIWAYAT PROSES (expand/collapse) =================
+        if (_expanded) ...[
+          const SizedBox(height: 12),
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => setState(() => _expanded = false),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Expanded(
+                          child: Text("Riwayat Proses",
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        ),
+                        Icon(Icons.keyboard_arrow_up_rounded, color: AppColors.textMuted),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    for (int i = 0; i < steps.length; i++)
+                      _TimelineStepTile(
+                        step: steps[i],
+                        isCurrent: i == currentIndex,
+                        isLast: i == steps.length - 1,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-class _StepLine extends StatelessWidget {
+class _TimelineStep {
+  final String label;
+  final String desc;
+  final IconData icon;
   final bool done;
-  const _StepLine({required this.done});
+  final String? time;
+  const _TimelineStep({required this.label, required this.desc, required this.icon, required this.done, this.time});
+}
+
+class _TimelineStepTile extends StatelessWidget {
+  final _TimelineStep step;
+  final bool isCurrent;
+  final bool isLast;
+  const _TimelineStepTile({required this.step, required this.isCurrent, required this.isLast});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 24,
-      height: 2,
-      margin: const EdgeInsets.only(bottom: 20),
-      color: done ? AppColors.success : const Color(0xFFD8DEE5),
+    final color = step.done ? AppColors.success : (isCurrent ? AppColors.primary : const Color(0xFFD8DEE5));
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: step.done ? AppColors.success : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color, width: 2),
+                ),
+                child: step.done
+                    ? const Icon(Icons.check, color: Colors.white, size: 13)
+                    : (isCurrent ? Center(child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle))) : null),
+              ),
+              if (!isLast) Expanded(child: Container(width: 2, color: color.withOpacity(.4))),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(step.label,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: step.done || isCurrent ? AppColors.textPrimary : AppColors.textMuted)),
+                        const SizedBox(height: 2),
+                        Text(step.desc, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  Text(step.time ?? '-', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

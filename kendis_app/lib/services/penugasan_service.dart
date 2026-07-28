@@ -21,4 +21,9 @@ class PenugasanService {
   static Future<void> mulaiPerjalanan(int idPenugasan) async {
     await ApiClient.post('/penugasan/mulai.php', {'id_penugasan': idPenugasan});
   }
+
+  static Future<Map<String, dynamic>> getRingkasan({String periode = 'bulan_ini'}) async {
+    final res = await ApiClient.get('/penugasan/ringkasan.php?periode=$periode');
+    return res['data'] as Map<String, dynamic>;
+  }
 }
