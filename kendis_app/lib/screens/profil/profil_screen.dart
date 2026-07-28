@@ -14,25 +14,23 @@ import 'tentang_aplikasi_screen.dart';
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
 
-Future<void> _confirmLogout(BuildContext context) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    barrierDismissible: true,
-    builder: (ctx) {
-      return Dialog(
+  // ---------------------------------------------------------------------
+  // LOGOUT
+  // ---------------------------------------------------------------------
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Container(
-          width: 190,
-          padding: const EdgeInsets.fromLTRB(
-            16,
-            14,
-            16,
-            14,
-          ),
+          width: 260,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.12),
@@ -44,135 +42,107 @@ Future<void> _confirmLogout(BuildContext context) async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // =========================================================
-              // ICON + JUDUL KELUAR
-              // =========================================================
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.logout_outlined,
-                    size: 13,
-                    color: AppColors.danger,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  const Text(
-                    'Keluar',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.danger,
-                    ),
-                  ),
+                children: const [
+                  Icon(Icons.logout_outlined, size: 18, color: AppColors.danger),
+                  SizedBox(width: 8),
+                  Text('Keluar',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.danger)),
                 ],
               ),
-
               const SizedBox(height: 18),
-
-              // =========================================================
-              // PESAN KONFIRMASI
-              // =========================================================
               const Text(
                 'Apakah Anda yakin ingin keluar dari\naplikasi?',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 8,
-                  height: 1.5,
-                  color: AppColors.textMuted,
-                ),
+                style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textMuted),
               ),
-
-              const SizedBox(height: 14),
-
-              // =========================================================
-              // TOMBOL OK
-              // =========================================================
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
-                height: 28,
+                height: 44,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx, true);
-                  },
+                  onPressed: () => Navigator.pop(ctx, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: const Text('OK', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 ),
               ),
-
-              const SizedBox(height: 6),
-
-              // =========================================================
-              // TOMBOL BATAL
-              // =========================================================
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                height: 28,
+                height: 44,
                 child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx, false);
-                  },
+                  onPressed: () => Navigator.pop(ctx, false),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textMuted,
                     backgroundColor: Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.zero,
-                    side: BorderSide(
-                      color: Colors.grey.shade200,
-                      width: 1,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
+                    side: BorderSide(color: Colors.grey.shade200, width: 1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text(
-                    'Batal',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  child: const Text('Batal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                 ),
               ),
             ],
           ),
         ),
-      );
-    },
-  );
+      ),
+    );
 
-  // =========================================================
-  // PROSES LOGOUT
-  // =========================================================
-
-  if (confirm == true && context.mounted) {
-    await context.read<AuthProvider>().logout();
-
-    if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        ),
-        (route) => false,
-      );
+    if (confirm == true && context.mounted) {
+      await context.read<AuthProvider>().logout();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
     }
   }
-}
+
+  // ---------------------------------------------------------------------
+  // SNACKBAR SUKSES (dipakai bareng oleh Edit Profil & Ganti Password)
+  // ---------------------------------------------------------------------
+
+  void _showSuccessSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(message, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          elevation: 4,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
+  // ---------------------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -180,226 +150,85 @@ Future<void> _confirmLogout(BuildContext context) async {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-
-      // Bottom navbar tidak kita ubah.
       body: SafeArea(
         child: Column(
           children: [
-            // =========================================================
-            // HEADER
-            // =========================================================
             _buildHeader(context),
-
-            // =========================================================
-            // CONTENT
-            // =========================================================
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  16,
-                  20,
-                  16,
-                  24,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 children: [
-                  // =====================================================
-                  // PROFILE CARD
-                  // =====================================================
                   _buildProfileCard(context, user),
-
                   const SizedBox(height: 20),
 
-                  // =====================================================
-                  // AKUN
-                  // =====================================================
                   _sectionLabel('AKUN'),
-
-                  _menuCard(
-                    children: [
-                      _MenuTile(
-                        icon: Icons.person_outline,
-                        label: 'Edit Profil',
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const EditProfilScreen(),
-                            ),
-                          );
-
-                          if (result == true && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check_rounded,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Expanded(
-                                      child: Text(
-                                        'Profil berhasil diperbarui',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: AppColors.primary,
-                                behavior: SnackBarBehavior.floating,
-                                elevation: 4,
-                                margin: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
+                  _menuCard(children: [
+                    _MenuTile(
+                      icon: Icons.person_outline,
+                      label: 'Edit Profil',
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const EditProfilScreen()),
+                        );
+                        if (result == true && context.mounted) {
+                          _showSuccessSnackBar(context, 'Profil berhasil diperbarui');
+                        }
+                      },
+                    ),
+                    _MenuTile(
+                      icon: Icons.lock_reset_outlined,
+                      label: 'Ganti Password',
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const GantiPasswordScreen()),
+                        );
+                        if (result == true && context.mounted) {
+                          _showSuccessSnackBar(context, 'Password berhasil diperbarui');
+                        }
+                      },
+                    ),
+                    _MenuTile(
+                      icon: Icons.notifications_none_outlined,
+                      label: 'Pengaturan Notifikasi',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PengaturanNotifikasiScreen()),
                       ),
-                      _MenuTile(
-                        icon: Icons.lock_reset_outlined,
-                        label: 'Ganti Password',
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const GantiPasswordScreen(),
-                            ),
-                          );
-
-                          if (result == true && context.mounted) {
-                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check_rounded,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Expanded(
-                                      child: Text(
-                                        'Password berhasil diperbarui',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: AppColors.primary,
-                                behavior: SnackBarBehavior.floating,
-                                elevation: 4,
-                                margin: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      _MenuTile(
-                        icon: Icons.notifications_none_outlined,
-                        label: 'Pengaturan Notifikasi',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const PengaturanNotifikasiScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                    ),
+                  ]),
 
                   const SizedBox(height: 20),
 
-                  // =====================================================
-                  // LAINNYA
-                  // =====================================================
                   _sectionLabel('LAINNYA'),
-
-                  _menuCard(
-                    children: [
-                      _MenuTile(
-                        icon: Icons.help_outline,
-                        label: 'Pusat Bantuan',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PusatBantuanScreen(),
-                            ),
-                          );
-                        },
+                  _menuCard(children: [
+                    _MenuTile(
+                      icon: Icons.help_outline,
+                      label: 'Pusat Bantuan',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
                       ),
-                      _MenuTile(
-                        icon: Icons.info_outline,
-                        label: 'Tentang Aplikasi',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TentangAplikasiScreen(),
-                            ),
-                          );
-                        },
+                    ),
+                    _MenuTile(
+                      icon: Icons.info_outline,
+                      label: 'Tentang Aplikasi',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TentangAplikasiScreen()),
                       ),
-                      _MenuTile(
-                        icon: Icons.logout_outlined,
-                        label: 'Keluar',
-                        isDanger: true,
-                        showArrow: false,
-                        onTap: () => _confirmLogout(context),
-                      ),
-                    ],
-                  ),
+                    ),
+                    _MenuTile(
+                      icon: Icons.logout_outlined,
+                      label: 'Keluar',
+                      isDanger: true,
+                      showArrow: false,
+                      onTap: () => _confirmLogout(context),
+                    ),
+                  ]),
 
                   const SizedBox(height: 32),
-
-                  // =====================================================
-                  // APP VERSION
-                  // =====================================================
                   _buildAppVersion(),
                 ],
               ),
@@ -410,33 +239,22 @@ Future<void> _confirmLogout(BuildContext context) async {
     );
   }
 
-  // =========================================================================
+  // ---------------------------------------------------------------------
   // HEADER
-  // =========================================================================
+  // ---------------------------------------------------------------------
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       child: Row(
         children: [
-          const Text(
-            'Profil',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
-            ),
-          ),
+          const Text('Profil',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
           const Spacer(),
           InkWell(
             onTap: () {
@@ -445,11 +263,7 @@ Future<void> _confirmLogout(BuildContext context) async {
             borderRadius: BorderRadius.circular(20),
             child: const Padding(
               padding: EdgeInsets.all(4),
-              child: Icon(
-                Icons.notifications_none_outlined,
-                size: 21,
-                color: AppColors.primary,
-              ),
+              child: Icon(Icons.notifications_none_outlined, size: 22, color: AppColors.primary),
             ),
           ),
         ],
@@ -457,9 +271,9 @@ Future<void> _confirmLogout(BuildContext context) async {
     );
   }
 
-  // =========================================================================
+  // ---------------------------------------------------------------------
   // PROFILE CARD
-  // =========================================================================
+  // ---------------------------------------------------------------------
 
   Widget _buildProfileCard(BuildContext context, dynamic user) {
     final String nama = user?.nama ?? '-';
@@ -469,19 +283,12 @@ Future<void> _confirmLogout(BuildContext context) async {
     final String role = user?.role ?? '-';
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.035),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
       child: Row(
@@ -490,146 +297,70 @@ Future<void> _confirmLogout(BuildContext context) async {
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.08),
-                ),
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.primary.withOpacity(0.08)),
                 child: ClipOval(
                   child: Center(
                     child: Text(
-                      nama.isNotEmpty && nama != '-'
-                          ? nama[0].toUpperCase()
-                          : 'D',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
+                      nama.isNotEmpty && nama != '-' ? nama[0].toUpperCase() : 'D',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                   ),
                 ),
               ),
-
-              // ICON PENSIL
               Positioned(
-                right: -1,
-                bottom: -1,
+                right: -2,
+                bottom: -2,
                 child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const FotoProfilScreen(),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FotoProfilScreen()),
+                  ),
                   child: Container(
-                    width: 19,
-                    height: 19,
+                    width: 22,
+                    height: 22,
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 2,
-                      ),
+                      border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(
-                      Icons.edit,
-                      size: 9,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.edit, size: 11, color: Colors.white),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // =============================================================
-                // NAMA
-                // =============================================================
-                Text(
-                  nama,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                // =============================================================
-                // NID
-                // =============================================================
-                _profileInfoRow(
-                  icon: Icons.badge_outlined,
-                  label: 'NID',
-                  value: nid,
-                ),
-
-                const SizedBox(height: 4),
-
-                // =============================================================
-                // NO HP
-                // =============================================================
-                _profileInfoRow(
-                  icon: Icons.phone_outlined,
-                  label: 'No. HP',
-                  value: noHp,
-                ),
-
-                const SizedBox(height: 4),
-
-                // =============================================================
-                // NO SIM
-                // =============================================================
-                _profileInfoRow(
-                  icon: Icons.credit_card_outlined,
-                  label: 'No. SIM',
-                  value: noSim,
-                ),
-
-                const SizedBox(height: 6),
-
-                // =============================================================
-                // ROLE
-                // =============================================================
+                Text(nama,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                const SizedBox(height: 8),
+                _profileInfoRow(icon: Icons.badge_outlined, label: 'NID', value: nid),
+                const SizedBox(height: 5),
+                _profileInfoRow(icon: Icons.phone_outlined, label: 'No. HP', value: noHp),
+                const SizedBox(height: 5),
+                _profileInfoRow(icon: Icons.credit_card_outlined, label: 'No. SIM', value: noSim),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(5),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.person_outline,
-                        size: 10,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 3),
+                      const Icon(Icons.person_outline, size: 13, color: AppColors.primary),
+                      const SizedBox(width: 4),
                       Text(
-                        role.isNotEmpty
-                            ? role[0].toUpperCase() + role.substring(1)
-                            : '-',
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
+                        role.isNotEmpty ? role[0].toUpperCase() + role.substring(1) : '-',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
                       ),
                     ],
                   ),
@@ -642,120 +373,63 @@ Future<void> _confirmLogout(BuildContext context) async {
     );
   }
 
-  // =========================================================================
-  // PROFILE INFO ROW
-  // =========================================================================
-
-  Widget _profileInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+  Widget _profileInfoRow({required IconData icon, required String label, required String value}) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 11,
-          color: AppColors.textMuted,
-        ),
-
-        const SizedBox(width: 5),
-
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 9,
-            color: AppColors.textMuted,
-          ),
-        ),
-
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Text('$label: ', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
         Expanded(
           child: Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
           ),
         ),
       ],
     );
   }
 
-  // =========================================================================
-  // SECTION LABEL
-  // =========================================================================
+  // ---------------------------------------------------------------------
+  // SECTION LABEL / MENU CARD
+  // ---------------------------------------------------------------------
 
   Widget _sectionLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 2,
-        bottom: 8,
-      ),
+      padding: const EdgeInsets.only(left: 2, bottom: 8),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textMuted,
-          letterSpacing: 0.6,
-        ),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.6),
       ),
     );
   }
 
-  // =========================================================================
-  // MENU CARD
-  // =========================================================================
-
-  Widget _menuCard({
-    required List<Widget> children,
-  }) {
+  Widget _menuCard({required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.035),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
-  // =========================================================================
+  // ---------------------------------------------------------------------
   // APP VERSION
-  // =========================================================================
+  // ---------------------------------------------------------------------
 
   Widget _buildAppVersion() {
-    return Column(
+    return const Column(
       children: [
-        Text(
-          'Aeon Pro v2.4.1 (Stable)',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 8,
-            color: AppColors.textMuted,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '© 2024 Aeon Professional. Hak cipta dilindungi.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 8,
-            color: AppColors.textMuted,
-          ),
-        ),
+        Text('Aeon Pro v2.4.1 (Stable)',
+            textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        SizedBox(height: 3),
+        Text('© 2024 Aeon Professional. Hak cipta dilindungi.',
+            textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
       ],
     );
   }
@@ -782,71 +456,33 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = isDanger ? AppColors.danger : AppColors.textPrimary;
+    final color = isDanger ? AppColors.danger : AppColors.textPrimary;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 9,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.grey.shade100,
-                width: 1,
-              ),
-            ),
+            border: Border(bottom: BorderSide(color: Colors.grey.shade100, width: 1)),
           ),
           child: Row(
             children: [
-              // =============================================================
-              // ICON
-              // =============================================================
               Container(
-                width: 34,
-                height: 34,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: isDanger
-                      ? AppColors.danger.withOpacity(0.06)
-                      : AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
+                  color: isDanger ? AppColors.danger.withOpacity(0.06) : AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: color,
-                ),
+                child: Icon(icon, size: 20, color: color),
               ),
-
-              const SizedBox(width: 12),
-
-              // =============================================================
-              // LABEL
-              // =============================================================
+              const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: color,
-                  ),
-                ),
+                child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: color)),
               ),
-
-              // =============================================================
-              // ARROW
-              // =============================================================
-              if (showArrow)
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: AppColors.textMuted,
-                ),
+              if (showArrow) Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
             ],
           ),
         ),
