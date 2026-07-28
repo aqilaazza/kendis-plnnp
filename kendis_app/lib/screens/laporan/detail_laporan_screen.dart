@@ -17,7 +17,8 @@ class DetailLaporanScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = penugasan;
     final totalBiaya = (p.rupiahBbm ?? 0) + (p.rupiahTol ?? 0) + (p.rupiahParkir ?? 0);
-    final adaFoto = [p.fotoBbmUrl, p.fotoTolUrl, p.fotoParkirUrl].any((e) => e != null && e.isNotEmpty);
+    final adaFoto =
+        [p.fotoBbmFullUrl, p.fotoTolFullUrl, p.fotoParkirFullUrl].any((e) => e != null && e.isNotEmpty);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -142,14 +143,14 @@ class DetailLaporanScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      if (p.fotoBbmUrl != null && p.fotoBbmUrl!.isNotEmpty)
-                        Expanded(child: _FotoThumb(label: 'Nota BBM', url: p.fotoBbmUrl!)),
-                      if (p.fotoBbmUrl != null && p.fotoBbmUrl!.isNotEmpty) const SizedBox(width: 8),
-                      if (p.fotoTolUrl != null && p.fotoTolUrl!.isNotEmpty)
-                        Expanded(child: _FotoThumb(label: 'Bukti Tol', url: p.fotoTolUrl!)),
-                      if (p.fotoTolUrl != null && p.fotoTolUrl!.isNotEmpty) const SizedBox(width: 8),
-                      if (p.fotoParkirUrl != null && p.fotoParkirUrl!.isNotEmpty)
-                        Expanded(child: _FotoThumb(label: 'Bukti Parkir', url: p.fotoParkirUrl!)),
+                      if (p.fotoBbmFullUrl != null && p.fotoBbmFullUrl!.isNotEmpty)
+                        Expanded(child: _FotoThumb(label: 'Nota BBM', url: p.fotoBbmFullUrl!)),
+                      if (p.fotoBbmFullUrl != null && p.fotoBbmFullUrl!.isNotEmpty) const SizedBox(width: 8),
+                      if (p.fotoTolFullUrl != null && p.fotoTolFullUrl!.isNotEmpty)
+                        Expanded(child: _FotoThumb(label: 'Bukti Tol', url: p.fotoTolFullUrl!)),
+                      if (p.fotoTolFullUrl != null && p.fotoTolFullUrl!.isNotEmpty) const SizedBox(width: 8),
+                      if (p.fotoParkirFullUrl != null && p.fotoParkirFullUrl!.isNotEmpty)
+                        Expanded(child: _FotoThumb(label: 'Bukti Parkir', url: p.fotoParkirFullUrl!)),
                     ],
                   ),
                 ],
