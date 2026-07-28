@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import '../../core/app_theme.dart';
 import '../../core/api_client.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/laporan_service.dart';
+import 'laporan_sukses_screen.dart';
 
 final _idRupiah = NumberFormat.decimalPattern('id_ID');
 
@@ -29,11 +31,6 @@ class _ThousandsInputFormatter extends TextInputFormatter {
 }
 
 /// Form pengisian laporan perjalanan.
-///
-/// Sengaja menerima [penugasan] (bukan cuma id) supaya kartu "Informasi
-/// Perjalanan" di atas form bisa langsung ditampilkan tanpa fetch ulang —
-/// dan supaya layar ini bisa dibuka LANGSUNG dari tombol "Isi Laporan
-/// Perjalanan" di Detail Penugasan, tanpa lewat layar/dialog perantara.
 class IsiLaporanScreen extends StatefulWidget {
   final PenugasanModel penugasan;
   const IsiLaporanScreen({super.key, required this.penugasan});
@@ -50,12 +47,15 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
   final _rupiahTolCtrl = TextEditingController();
   final _rupiahParkirCtrl = TextEditingController();
 
-  XFile? _fotoBbm, _fotoTol, _fotoParkir;
+  Uint8List? _fotoBbmBytes, _fotoTolBytes, _fotoParkirBytes;
+  String? _fotoBbmName, _fotoTolName, _fotoParkirName;
   bool _submitting = false;
   final _picker = ImagePicker();
 
+  /// true setelah user pertama kali menekan tombol kirim 
+  bool _attemptedSubmit = false;
+
   /// Parse teks yang sudah diformat pakai titik ribuan (mis. "100.000")
-  /// balik jadi angka polos (100000).
   double _parseCurrency(String text) => double.tryParse(text.replaceAll('.', '')) ?? 0;
 
   double get _totalBbm {
@@ -64,13 +64,29 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
     return liter * harga;
   }
 
+  // === Validasi per-field, dievaluasi ulang tiap build ===
+  bool get _odoStartError => _attemptedSubmit && _odoStartCtrl.text.trim().isEmpty;
+  bool get _odoStopError => _attemptedSubmit && _odoStopCtrl.text.trim().isEmpty;
+  bool get _fotoBbmError => _attemptedSubmit && _totalBbm > 0 && _fotoBbmBytes == null;
+  bool get _fotoTolError => _attemptedSubmit && _parseCurrency(_rupiahTolCtrl.text) > 0 && _fotoTolBytes == null;
+  bool get _fotoParkirError => _attemptedSubmit && _parseCurrency(_rupiahParkirCtrl.text) > 0 && _fotoParkirBytes == null;
+
+  bool get _hasAnyError => _odoStartError || _odoStopError || _fotoBbmError || _fotoTolError || _fotoParkirError;
+
   @override
   void initState() {
     super.initState();
-    // Total BBM dihitung otomatis dari liter x harga/liter, jadi field-nya
-    // perlu ikut redraw setiap kali salah satu dari dua input itu berubah.
-    _literBbmCtrl.addListener(() => setState(() {}));
-    _hargaLiterCtrl.addListener(() => setState(() {}));
+    // Beberapa field saling mempengaruhi tampilan (total BBM otomatis) atau
+    for (final c in [
+      _odoStartCtrl,
+      _odoStopCtrl,
+      _literBbmCtrl,
+      _hargaLiterCtrl,
+      _rupiahTolCtrl,
+      _rupiahParkirCtrl,
+    ]) {
+      c.addListener(() => setState(() {}));
+    }
   }
 
   @override
@@ -89,79 +105,68 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
   }
 
   /// Tampilkan pilihan sumber foto (Kamera / Galeri) via bottom sheet.
-  /// Sebelumnya non-web dipaksa langsung buka kamera — sekarang user bebas
-  /// pilih upload dari galeri kalau fotonya sudah ada / tidak mau motret
-  /// langsung.
-  Future<void> _pickImage(Function(XFile) onPicked) async {
+  /// Bytes file langsung dibaca segera setelah dipilih, supaya tidak
+  /// kehapus sistem (Android rawan hapus file cache temporary).
+  Future<void> _pickImage({
+    required void Function(Uint8List bytes, String name) onPicked,
+  }) async {
+    XFile? picked;
     if (kIsWeb) {
-      // Browser: langsung ke gallery/file picker, kamera kadang nggak
-      // didukung penuh.
-      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
-      if (picked != null) onPicked(picked);
-      return;
-    }
-
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 16, bottom: 4),
-              child: Text('Pilih Sumber Foto',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
-              title: const Text('Ambil Foto'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-            ),
-            const SizedBox(height: 8),
-          ],
+      picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+    } else {
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-      ),
-    );
-
-    if (source == null) return; // user batal / dismiss sheet
-
-    final picked = await _picker.pickImage(source: source, imageQuality: 50);
-    if (picked != null) onPicked(picked);
-  }
-
-  /// Foto bukti nggak wajib untuk semua field -- cuma diminta kalau biaya
-  /// yang bersangkutan diisi (misal biaya tol > 0 tapi foto tol kosong).
-  /// Kalau biayanya nol/kosong (mis. nggak lewat tol), foto boleh dilewat.
-  bool _validateFotoLengkap() {
-    final missing = <String>[];
-    if (_totalBbm > 0 && _fotoBbm == null) missing.add('Foto Bukti Nota BBM');
-    if (_parseCurrency(_rupiahTolCtrl.text) > 0 && _fotoTol == null) missing.add('Bukti Tol');
-    if (_parseCurrency(_rupiahParkirCtrl.text) > 0 && _fotoParkir == null) missing.add('Bukti Parkir');
-
-    if (missing.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lengkapi dulu: ${missing.join(', ')}'),
-          backgroundColor: AppColors.danger,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 16, bottom: 4),
+                child: Text('Pilih Sumber Foto',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: const Text('Ambil Foto'),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                title: const Text('Pilih dari Galeri'),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       );
-      return false;
+      if (source == null) return;
+      picked = await _picker.pickImage(source: source, imageQuality: 50);
     }
-    return true;
+
+    if (picked == null) return;
+    try {
+      final bytes = await picked.readAsBytes();
+      onPicked(bytes, picked.name);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membaca foto: $e'), backgroundColor: AppColors.danger),
+      );
+    }
   }
 
   /// Nampilin dialog "Apakah Anda yakin...?" sebelum beneran ngirim laporan
-  /// ke server. Cuma lanjut ke _submit() kalau user tap "OK".
   Future<void> _confirmAndSubmit() async {
-    if (!_validateFotoLengkap()) return;
+    setState(() => _attemptedSubmit = true);
+
+    if (_hasAnyError) {
+      // Banner merah + border merah di field yang kosong otomatis muncul
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -233,17 +238,17 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
         rupiahTol: _parseCurrency(_rupiahTolCtrl.text),
         odoStart: int.tryParse(_odoStartCtrl.text) ?? 0,
         odoStop: int.tryParse(_odoStopCtrl.text) ?? 0,
-        fotoBbm: _fotoBbm,
-        fotoParkir: _fotoParkir,
-        fotoTol: _fotoTol,
-        fotoOdoStart: null,
-        fotoOdoStop: null,
+        fotoBbmBytes: _fotoBbmBytes,
+        fotoBbmName: _fotoBbmName,
+        fotoParkirBytes: _fotoParkirBytes,
+        fotoParkirName: _fotoParkirName,
+        fotoTolBytes: _fotoTolBytes,
+        fotoTolName: _fotoTolName,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Laporan berhasil dikirim'), backgroundColor: AppColors.success),
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => LaporanSuksesScreen(penugasan: widget.penugasan)),
       );
-      Navigator.of(context).pop();
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.danger));
@@ -272,6 +277,35 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
             Text('Lengkapi data operasional perjalanan Anda.',
                 style: TextStyle(color: AppColors.textBody, fontSize: 13)),
             const SizedBox(height: 16),
+
+            // === Banner error: muncul kalau user sudah coba kirim tapi
+            // masih ada field wajib yang kosong ===
+            if (_attemptedSubmit && _hasAnyError) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: RichText(
+                        text: const TextSpan(
+                          style: TextStyle(fontSize: 12.5, color: Colors.white, height: 1.4),
+                          children: [
+                            TextSpan(text: 'Gagal Mengirim: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                            TextSpan(text: 'Mohon lengkapi bagian yang kosong.'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // === Kartu ringkasan penugasan (read-only) ===
             _InfoCard(
@@ -311,10 +345,27 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
               title: 'Odometer',
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _labeledField('Odometer Mulai (KM)', _odoStartCtrl, kind: _FieldKind.integer)),
+                    Expanded(
+                      child: _labeledField(
+                        'Odometer Mulai (KM)',
+                        _odoStartCtrl,
+                        kind: _FieldKind.integer,
+                        isError: _odoStartError,
+                        errorText: 'Bagian ini wajib diisi',
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: _labeledField('Odometer Selesai (KM)', _odoStopCtrl, kind: _FieldKind.integer)),
+                    Expanded(
+                      child: _labeledField(
+                        'Odometer Selesai (KM)',
+                        _odoStopCtrl,
+                        kind: _FieldKind.integer,
+                        isError: _odoStopError,
+                        errorText: 'Bagian ini wajib diisi',
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -336,7 +387,16 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
                 const SizedBox(height: 10),
                 _ReadonlyTotalField(label: 'Total Rupiah BBM', value: 'Rp ${_idRupiah.format(_totalBbm)}'),
                 const SizedBox(height: 14),
-                _bukitFotoButton('Foto Bukti Nota BBM (opsional)', _fotoBbm, (f) => setState(() => _fotoBbm = f)),
+                _bukitFotoButton(
+                  label: _totalBbm > 0 ? 'Foto Bukti Nota BBM' : 'Foto Bukti Nota BBM (opsional)',
+                  bytes: _fotoBbmBytes,
+                  fileName: _fotoBbmName,
+                  onPick: () => _pickImage(
+                    onPicked: (b, n) => setState(() { _fotoBbmBytes = b; _fotoBbmName = n; }),
+                  ),
+                  onClear: () => setState(() { _fotoBbmBytes = null; _fotoBbmName = null; }),
+                  isError: _fotoBbmError,
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -348,11 +408,29 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
               children: [
                 _labeledField('Biaya Tol (Rp)', _rupiahTolCtrl, kind: _FieldKind.currency),
                 const SizedBox(height: 10),
-                _bukitFotoButton('Bukti Tol (opsional)', _fotoTol, (f) => setState(() => _fotoTol = f)),
+                _bukitFotoButton(
+                  label: _parseCurrency(_rupiahTolCtrl.text) > 0 ? 'Bukti Tol' : 'Bukti Tol (opsional)',
+                  bytes: _fotoTolBytes,
+                  fileName: _fotoTolName,
+                  onPick: () => _pickImage(
+                    onPicked: (b, n) => setState(() { _fotoTolBytes = b; _fotoTolName = n; }),
+                  ),
+                  onClear: () => setState(() { _fotoTolBytes = null; _fotoTolName = null; }),
+                  isError: _fotoTolError,
+                ),
                 const SizedBox(height: 16),
                 _labeledField('Biaya Parkir (Rp)', _rupiahParkirCtrl, kind: _FieldKind.currency),
                 const SizedBox(height: 10),
-                _bukitFotoButton('Bukti Parkir (opsional)', _fotoParkir, (f) => setState(() => _fotoParkir = f)),
+                _bukitFotoButton(
+                  label: _parseCurrency(_rupiahParkirCtrl.text) > 0 ? 'Bukti Parkir' : 'Bukti Parkir (opsional)',
+                  bytes: _fotoParkirBytes,
+                  fileName: _fotoParkirName,
+                  onPick: () => _pickImage(
+                    onPicked: (b, n) => setState(() { _fotoParkirBytes = b; _fotoParkirName = n; }),
+                  ),
+                  onClear: () => setState(() { _fotoParkirBytes = null; _fotoParkirName = null; }),
+                  isError: _fotoParkirError,
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -406,9 +484,14 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
     );
   }
 
-  /// Label field ditaruh sebagai teks biasa DI LUAR box (bukan hintText di
-  /// dalam box), biar selalu kebaca meski field-nya udah diisi.
-  Widget _labeledField(String label, TextEditingController controller, {_FieldKind kind = _FieldKind.integer}) {
+  /// Label field ditaruh sebagai teks biasa DI LUAR box 
+  Widget _labeledField(
+    String label,
+    TextEditingController controller, {
+    _FieldKind kind = _FieldKind.integer,
+    bool isError = false,
+    String? errorText,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -416,12 +499,17 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
           padding: const EdgeInsets.only(bottom: 6, left: 2),
           child: Text(label, style: TextStyle(fontSize: 12, color: AppColors.textBody, fontWeight: FontWeight.w500)),
         ),
-        _numberField(controller, kind: kind),
+        _numberField(controller, kind: kind, isError: isError),
+        if (isError && errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 2),
+            child: Text(errorText, style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600)),
+          ),
       ],
     );
   }
 
-  Widget _numberField(TextEditingController controller, {_FieldKind kind = _FieldKind.integer}) {
+  Widget _numberField(TextEditingController controller, {_FieldKind kind = _FieldKind.integer, bool isError = false}) {
     TextInputType keyboardType;
     List<TextInputFormatter> formatters;
     String? prefixText;
@@ -442,6 +530,9 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
         break;
     }
 
+    final borderColor = isError ? AppColors.danger : Colors.black.withOpacity(0.06);
+    final borderWidth = isError ? 1.4 : 1.0;
+
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -450,77 +541,109 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
         hintText: '0',
         prefixText: prefixText,
         filled: true,
-        fillColor: AppColors.inputFill,
+        fillColor: isError ? AppColors.danger.withOpacity(0.04) : AppColors.inputFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.06)),
+          borderSide: BorderSide(color: borderColor, width: borderWidth),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.06)),
+          borderSide: BorderSide(color: borderColor, width: borderWidth),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+          borderSide: BorderSide(color: isError ? AppColors.danger : AppColors.primary, width: 1.4),
         ),
       ),
     );
   }
 
-  Widget _bukitFotoButton(String label, XFile? file, ValueChanged<XFile?> onPicked) {
-    final taken = file != null;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-      decoration: BoxDecoration(
-        color: taken ? AppColors.success.withOpacity(0.08) : AppColors.inputFill,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: taken ? AppColors.success.withOpacity(0.4) : Colors.transparent),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              // Tap area teks: pilih foto baru (atau ganti yang sudah ada).
-              onTap: () => _pickImage(onPicked),
-              borderRadius: BorderRadius.circular(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(taken ? Icons.check_circle : Icons.camera_alt_outlined,
-                      size: 16, color: taken ? AppColors.success : AppColors.textMuted),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      // Kalau sudah ada foto, tampilkan nama filenya biar user
-                      // tahu file mana yang bakal ke-upload — bukan cuma "terpilih".
-                      taken ? file.name : label,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                        color: taken ? AppColors.textPrimary : AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  /// Tombol pilih foto bukti. Kalau [isError] true, border & teks berubah
+  /// merah dan muncul label "Bagian ini wajib diisi" di bawahnya.
+  Widget _bukitFotoButton({
+    required String label,
+    required Uint8List? bytes,
+    required String? fileName,
+    required VoidCallback onPick,
+    required VoidCallback onClear,
+    bool isError = false,
+  }) {
+    final taken = bytes != null;
+
+    Color bgColor;
+    Color borderColor;
+    if (taken) {
+      bgColor = AppColors.success.withOpacity(0.08);
+      borderColor = AppColors.success.withOpacity(0.4);
+    } else if (isError) {
+      bgColor = AppColors.danger.withOpacity(0.05);
+      borderColor = AppColors.danger.withOpacity(0.5);
+    } else {
+      bgColor = AppColors.inputFill;
+      borderColor = Colors.transparent;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: isError ? 1.2 : 1),
           ),
-          if (taken) ...[
-            const SizedBox(width: 6),
-            InkWell(
-              // Tombol batal: hapus foto yang sudah dipilih tanpa harus
-              // buka kamera/galeri lagi kalau jadinya gak mau diupload.
-              onTap: () => onPicked(null),
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(Icons.close_rounded, size: 15, color: AppColors.danger),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: onPick,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        taken ? Icons.check_circle : Icons.camera_alt_outlined,
+                        size: 16,
+                        color: taken ? AppColors.success : (isError ? AppColors.danger : AppColors.textMuted),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          taken ? (fileName ?? 'Foto terpilih') : label,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: taken ? AppColors.textPrimary : (isError ? AppColors.danger : AppColors.textMuted),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
-        ],
-      ),
+              if (taken) ...[
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: onClear,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(Icons.close_rounded, size: 15, color: AppColors.danger),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (isError)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 2),
+            child: Text('Bagian ini wajib diisi',
+                style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600)),
+          ),
+      ],
     );
   }
 }
