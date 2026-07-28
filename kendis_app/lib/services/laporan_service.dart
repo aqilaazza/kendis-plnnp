@@ -1,4 +1,4 @@
-import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import '../core/api_client.dart';
 import '../models/laporan_detail_model.dart';
 
@@ -11,12 +11,18 @@ class LaporanService {
     double rupiahTol = 0,
     int odoStart = 0,
     int odoStop = 0,
-    XFile? fotoBbm,
-    XFile? fotoParkir,
-    XFile? fotoTol,
-    XFile? fotoOdoStart,
-    XFile? fotoOdoStop,
+    Uint8List? fotoBbmBytes,
+    String? fotoBbmName,
+    Uint8List? fotoParkirBytes,
+    String? fotoParkirName,
+    Uint8List? fotoTolBytes,
+    String? fotoTolName,
   }) async {
+    final files = <String, ({Uint8List bytes, String name})>{};
+    if (fotoBbmBytes != null && fotoBbmName != null) files['foto_bbm'] = (bytes: fotoBbmBytes, name: fotoBbmName);
+    if (fotoParkirBytes != null && fotoParkirName != null) files['foto_parkir'] = (bytes: fotoParkirBytes, name: fotoParkirName);
+    if (fotoTolBytes != null && fotoTolName != null) files['foto_tol'] = (bytes: fotoTolBytes, name: fotoTolName);
+
     await ApiClient.postMultipart(
       '/laporan/submit.php',
       {
@@ -28,13 +34,7 @@ class LaporanService {
         'odo_start': odoStart.toString(),
         'odo_stop': odoStop.toString(),
       },
-      {
-        'foto_bbm': fotoBbm,
-        'foto_parkir': fotoParkir,
-        'foto_tol': fotoTol,
-        'foto_odo_start': fotoOdoStart,
-        'foto_odo_stop': fotoOdoStop,
-      },
+      files,
     );
   }
 

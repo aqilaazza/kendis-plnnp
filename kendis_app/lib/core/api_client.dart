@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 
@@ -41,7 +41,7 @@ class ApiClient {
   static Future<Map<String, dynamic>> postMultipart(
     String endpoint,
     Map<String, String> fields,
-    Map<String, XFile?> files,
+    Map<String, ({Uint8List bytes, String name})> files,
   ) async {
     final token = await _getToken();
     final uri = Uri.parse('${AppConfig.baseUrl}$endpoint');
@@ -55,15 +55,9 @@ class ApiClient {
 
     for (final entry in files.entries) {
       final file = entry.value;
-      if (file == null) continue;
-      try {
-        final bytes = await file.readAsBytes();
-        request.files.add(
-          http.MultipartFile.fromBytes(entry.key, bytes, filename: file.name),
-        );
-      } catch (e) {
-        throw ApiException('Gagal membaca file ${file.name}: $e');
-      }
+      request.files.add(
+        http.MultipartFile.fromBytes(entry.key, file.bytes, filename: file.name),
+      );
     }
 
     try {
