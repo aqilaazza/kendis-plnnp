@@ -5,24 +5,83 @@ class KegiatanModel {
   final String tanggal;
   final String jam;
 
+  // ID driver yang mengambil kegiatan
+  final int? idDriver;
+
+  // Nama driver yang mengambil kegiatan
+  final String? namaDriver;
+
+  // NID driver yang mengambil kegiatan
+  final String? nidDriver;
+
   KegiatanModel({
     required this.id,
     required this.namaKegiatan,
     required this.tujuan,
     required this.tanggal,
     required this.jam,
+    this.idDriver,
+    this.namaDriver,
+    this.nidDriver,
   });
 
-  factory KegiatanModel.fromJson(Map<String, dynamic> json) {
+  // ============================================================
+  // CEK APAKAH SUDAH DIAMBIL DRIVER
+  // ============================================================
+
+  bool get sudahDiambil {
+    return idDriver != null;
+  }
+
+  factory KegiatanModel.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    int? parsedIdDriver;
+
+    final rawIdDriver = json['id_driver'];
+
+    if (rawIdDriver != null &&
+        rawIdDriver.toString().isNotEmpty &&
+        rawIdDriver.toString() != '0') {
+      parsedIdDriver = int.tryParse(
+        rawIdDriver.toString(),
+      );
+    }
+
     return KegiatanModel(
-      id: int.parse(json['id'].toString()),
-      namaKegiatan: json['nama_kegiatan'] ?? '',
-      tujuan: json['tujuan'] ?? '',
-      tanggal: json['tanggal'] ?? '',
-      jam: json['jam'] ?? '',
+      id: int.tryParse(
+            json['id'].toString(),
+          ) ??
+          0,
+
+      namaKegiatan:
+          json['nama_kegiatan']?.toString() ?? '',
+
+      tujuan:
+          json['tujuan']?.toString() ?? '',
+
+      tanggal:
+          json['tanggal']?.toString() ?? '',
+
+      jam:
+          json['jam']?.toString() ?? '',
+
+      idDriver:
+          parsedIdDriver,
+
+      namaDriver:
+          json['nama_driver']?.toString(),
+
+      nidDriver:
+          json['nid_driver']?.toString(),
     );
   }
 }
+
+
+// ============================================================
+// NOTIFIKASI MODEL
+// ============================================================
 
 class NotifikasiModel {
   final int id;
@@ -39,13 +98,26 @@ class NotifikasiModel {
     required this.createdAt,
   });
 
-  factory NotifikasiModel.fromJson(Map<String, dynamic> json) {
+  factory NotifikasiModel.fromJson(
+    Map<String, dynamic> json,
+  ) {
     return NotifikasiModel(
-      id: int.parse(json['id'].toString()),
-      judul: json['judul'] ?? '',
-      pesan: json['pesan'] ?? '',
-      isRead: json['is_read'].toString() == '1',
-      createdAt: json['created_at'] ?? '',
+      id: int.tryParse(
+            json['id'].toString(),
+          ) ??
+          0,
+
+      judul:
+          json['judul']?.toString() ?? '',
+
+      pesan:
+          json['pesan']?.toString() ?? '',
+
+      isRead:
+          json['is_read'].toString() == '1',
+
+      createdAt:
+          json['created_at']?.toString() ?? '',
     );
   }
 }
