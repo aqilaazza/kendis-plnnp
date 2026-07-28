@@ -1,3 +1,5 @@
+import '../config/app_config.dart';
+
 class PenugasanModel {
   final int id;
   final int idRequest;
@@ -132,4 +134,14 @@ class PenugasanModel {
         return statusRequest;
     }
   }
+
+  // === Getter URL foto lengkap ===
+  String? get fotoBbmFullUrl =>
+      (fotoBbmUrl != null && fotoBbmUrl!.isNotEmpty) ? '${AppConfig.baseUrl}/uploads/$fotoBbmUrl' : null;
+
+  String? get fotoTolFullUrl =>
+      (fotoTolUrl != null && fotoTolUrl!.isNotEmpty) ? '${AppConfig.baseUrl}/uploads/$fotoTolUrl' : null;
+
+  String? get fotoParkirFullUrl =>
+      (fotoParkirUrl != null && fotoParkirUrl!.isNotEmpty) ? '${AppConfig.baseUrl}/uploads/$fotoParkirUrl' : null;
 }
