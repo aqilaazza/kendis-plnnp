@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/headers.php';
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/auth.php';
@@ -6,35 +7,40 @@ require_once __DIR__ . '/../helpers/auth.php';
 $user = requireDriverAuth();
 $pdo = getDbConnection();
 
+// =========================================================
+// GET - AMBIL SEMUA KEGIATAN
+// =========================================================
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = $pdo->prepare(
-        "SELECT * FROM kegiatan_harian WHERE id_driver = :uid ORDER BY tanggal DESC, jam DESC"
-    );
-    $stmt->execute(['uid' => $user['id']]);
-    jsonSuccess($stmt->fetchAll());
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $body = getJsonBody();
-    $nama = trim($body['nama_kegiatan'] ?? '');
-    $tujuan = trim($body['tujuan'] ?? '');
-    $tanggal = $body['tanggal'] ?? null;
-    $jam = $body['jam'] ?? null;
-
-    if (!$nama || !$tujuan || !$tanggal || !$jam) {
-        jsonError('nama_kegiatan, tujuan, tanggal, dan jam wajib diisi', 422);
-    }
 
     $stmt = $pdo->prepare(
-        "INSERT INTO kegiatan_harian (nama_kegiatan, tujuan, tanggal, jam, id_driver)
-         VALUES (:nama, :tujuan, :tanggal, :jam, :uid)"
+        "SELECT
+            kh.id,
+            kh.nama_kegiatan,
+            kh.tujuan,
+            kh.tanggal,
+            kh.jam,
+            kh.id_driver,
+            d.nama AS nama_driver,
+            d.nid AS nid_driver
+        FROM kegiatan_harian kh
+        LEFT JOIN users d
+            ON kh.id_driver = d.id
+        ORDER BY kh.tanggal DESC, kh.jam DESC"
     );
-    $stmt->execute([
-        'nama' => $nama, 'tujuan' => $tujuan, 'tanggal' => $tanggal,
-        'jam' => $jam, 'uid' => $user['id'],
-    ]);
 
-    jsonSuccess(['id' => $pdo->lastInsertId()], 'Kegiatan berhasil dicatat', 201);
+    $stmt->execute();
+
+    jsonSuccess(
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    );
 }
 
-jsonError('Method tidak diizinkan', 405);
+// =========================================================
+// METHOD TIDAK DIIZINKAN
+// =========================================================
+
+jsonError(
+    'Method tidak diizinkan',
+    405
+);
