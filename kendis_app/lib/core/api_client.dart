@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,8 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
+
+const _kRequestTimeout = Duration(seconds: 60);
 
 class ApiClient {
   static Future<Map<String, dynamic>> get(String endpoint) async {
@@ -46,22 +49,33 @@ class ApiClient {
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
     }
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+
+    request.fields.addAll(fields);
 
     for (final entry in files.entries) {
       final file = entry.value;
       if (file == null) continue;
-      final bytes = await file.readAsBytes();
-      request.files.add(
-        http.MultipartFile.fromBytes(entry.key, bytes, filename: file.name),
-      );
+      try {
+        final bytes = await file.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(entry.key, bytes, filename: file.name),
+        );
+      } catch (e) {
+        throw ApiException('Gagal membaca file ${file.name}: $e');
+      }
     }
 
     try {
-      final streamedRes = await request.send();
+      final streamedRes = await request.send().timeout(_kRequestTimeout);
       final res = await http.Response.fromStream(streamedRes);
       return _handleResponse(res);
+    } on TimeoutException {
+      throw ApiException('Waktu habis — server terlalu lambat merespons');
     } on http.ClientException catch (e) {
       throw ApiException('Gagal menghubungi server (${e.message})');
+    } catch (e) {
+      throw ApiException('Gagal mengirim laporan: $e');
     }
   }
 

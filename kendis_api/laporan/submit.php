@@ -24,24 +24,42 @@ if (!$penugasan) {
 }
 
 function handleUpload(string $fieldName): ?string {
-    if (empty($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+    if (empty($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
         return null;
     }
-    $uploadDir = __DIR__ . '/../uploads/';
+    if ($_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception("Upload $fieldName gagal, kode error: " . $_FILES[$fieldName]['error']);
+    }
+
+    $uploadDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+    if (!is_dir($uploadDir)) {
+        $mk = mkdir($uploadDir, 0777, true);
+        if (!$mk && !is_dir($uploadDir)) {
+            throw new Exception("Gagal membuat folder uploads: $uploadDir");
+        }
+    }
+    if (!is_writable($uploadDir)) {
+        throw new Exception("Folder uploads tidak writable: $uploadDir (cek permission/owner)");
+    }
+
     $ext = pathinfo($_FILES[$fieldName]['name'], PATHINFO_EXTENSION);
     $filename = $fieldName . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $target = $uploadDir . $filename;
-    if (move_uploaded_file($_FILES[$fieldName]['tmp_name'], $target)) {
-        return $filename;
+
+    if (!move_uploaded_file($_FILES[$fieldName]['tmp_name'], $target)) {
+        throw new Exception("move_uploaded_file gagal untuk $fieldName ke $target");
     }
-    return null;
+    return $filename;
 }
 
-$fotoBbm = handleUpload('foto_bbm');
-$fotoParkir = handleUpload('foto_parkir');
-$fotoTol = handleUpload('foto_tol');
-$fotoOdoStart = handleUpload('foto_odo_start');
-$fotoOdoStop = handleUpload('foto_odo_stop');
+try {
+    $fotoBbm = handleUpload('foto_bbm');
+    $fotoParkir = handleUpload('foto_parkir');
+    $fotoTol = handleUpload('foto_tol');
+} catch (Exception $e) {
+    error_log('[SUBMIT UPLOAD ERROR] ' . $e->getMessage());
+    jsonError('Gagal upload file: ' . $e->getMessage(), 500);
+}
 
 $literBbm = (float)($_POST['liter_bbm'] ?? 0);
 $rupiahBbm = (float)($_POST['rupiah_bbm'] ?? 0);
@@ -66,16 +84,14 @@ try {
                 . ($fotoBbm ? ", foto_bbm = :foto_bbm" : "")
                 . ($fotoParkir ? ", foto_parkir = :foto_parkir" : "")
                 . ($fotoTol ? ", foto_tol = :foto_tol" : "")
-                . ($fotoOdoStart ? ", foto_odo_start = :foto_odo_start" : "")
-                . ($fotoOdoStop ? ", foto_odo_stop = :foto_odo_stop" : "")
                 . " WHERE id_penugasan = :id_penugasan";
     } else {
         $sql = "INSERT INTO laporan_driver
                     (id_penugasan, liter_bbm, rupiah_bbm, foto_bbm, rupiah_parkir, foto_parkir,
-                     rupiah_tol, foto_tol, total_pelaporan, odo_start, foto_odo_start, odo_stop, foto_odo_stop)
+                     rupiah_tol, foto_tol, total_pelaporan, odo_start, odo_stop)
                 VALUES
                     (:id_penugasan, :liter_bbm, :rupiah_bbm, :foto_bbm, :rupiah_parkir, :foto_parkir,
-                     :rupiah_tol, :foto_tol, :total, :odo_start, :foto_odo_start, :odo_stop, :foto_odo_stop)";
+                     :rupiah_tol, :foto_tol, :total, :odo_start, :odo_stop)";
     }
 
     $params = [
@@ -88,18 +104,17 @@ try {
         'odo_start' => $odoStart,
         'odo_stop' => $odoStop,
     ];
-    if ($fotoBbm) $params['foto_bbm'] = $fotoBbm;
-    if ($fotoParkir) $params['foto_parkir'] = $fotoParkir;
-    if ($fotoTol) $params['foto_tol'] = $fotoTol;
-    if ($fotoOdoStart) $params['foto_odo_start'] = $fotoOdoStart;
-    if ($fotoOdoStop) $params['foto_odo_stop'] = $fotoOdoStop;
-    if (!$row) {
-        // insert butuh semua key foto walau null
+
+    if ($row) {
+        // UPDATE: kolom foto cuma di-set kalau ada foto baru yang diupload
+        if ($fotoBbm) $params['foto_bbm'] = $fotoBbm;
+        if ($fotoParkir) $params['foto_parkir'] = $fotoParkir;
+        if ($fotoTol) $params['foto_tol'] = $fotoTol;
+    } else {
+        // INSERT: butuh semua key foto walau null
         $params['foto_bbm'] = $fotoBbm;
         $params['foto_parkir'] = $fotoParkir;
         $params['foto_tol'] = $fotoTol;
-        $params['foto_odo_start'] = $fotoOdoStart;
-        $params['foto_odo_stop'] = $fotoOdoStop;
     }
 
     $stmt = $pdo->prepare($sql);
@@ -133,6 +148,7 @@ try {
     $pdo->commit();
 } catch (Exception $e) {
     $pdo->rollBack();
+    error_log('[SUBMIT DB ERROR] ' . $e->getMessage());
     jsonError('Gagal menyimpan laporan: ' . $e->getMessage(), 500);
 }
 
