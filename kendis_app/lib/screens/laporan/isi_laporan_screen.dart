@@ -88,17 +88,81 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
     super.dispose();
   }
 
+  /// Tampilkan pilihan sumber foto (Kamera / Galeri) via bottom sheet.
+  /// Sebelumnya non-web dipaksa langsung buka kamera — sekarang user bebas
+  /// pilih upload dari galeri kalau fotonya sudah ada / tidak mau motret
+  /// langsung.
   Future<void> _pickImage(Function(XFile) onPicked) async {
-    // Di web, ImageSource.camera kadang gak didukung penuh oleh browser —
-    // fallback ke gallery/file picker biar tetap jalan pas testing di Chrome.
-    final source = kIsWeb ? ImageSource.gallery : ImageSource.camera;
-    final picked = await _picker.pickImage(source: source, imageQuality: 75);
+    if (kIsWeb) {
+      // Browser: langsung ke gallery/file picker, kamera kadang nggak
+      // didukung penuh.
+      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+      if (picked != null) onPicked(picked);
+      return;
+    }
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 16, bottom: 4),
+              child: Text('Pilih Sumber Foto',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+              title: const Text('Ambil Foto'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+              title: const Text('Pilih dari Galeri'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return; // user batal / dismiss sheet
+
+    final picked = await _picker.pickImage(source: source, imageQuality: 50);
     if (picked != null) onPicked(picked);
+  }
+
+  /// Foto bukti nggak wajib untuk semua field -- cuma diminta kalau biaya
+  /// yang bersangkutan diisi (misal biaya tol > 0 tapi foto tol kosong).
+  /// Kalau biayanya nol/kosong (mis. nggak lewat tol), foto boleh dilewat.
+  bool _validateFotoLengkap() {
+    final missing = <String>[];
+    if (_totalBbm > 0 && _fotoBbm == null) missing.add('Foto Bukti Nota BBM');
+    if (_parseCurrency(_rupiahTolCtrl.text) > 0 && _fotoTol == null) missing.add('Bukti Tol');
+    if (_parseCurrency(_rupiahParkirCtrl.text) > 0 && _fotoParkir == null) missing.add('Bukti Parkir');
+
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lengkapi dulu: ${missing.join(', ')}'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return false;
+    }
+    return true;
   }
 
   /// Nampilin dialog "Apakah Anda yakin...?" sebelum beneran ngirim laporan
   /// ke server. Cuma lanjut ke _submit() kalau user tap "OK".
   Future<void> _confirmAndSubmit() async {
+    if (!_validateFotoLengkap()) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
@@ -284,11 +348,11 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
               children: [
                 _labeledField('Biaya Tol (Rp)', _rupiahTolCtrl, kind: _FieldKind.currency),
                 const SizedBox(height: 10),
-                _bukitFotoButton('Bukti Tol', _fotoTol, (f) => setState(() => _fotoTol = f)),
+                _bukitFotoButton('Bukti Tol (opsional)', _fotoTol, (f) => setState(() => _fotoTol = f)),
                 const SizedBox(height: 16),
                 _labeledField('Biaya Parkir (Rp)', _rupiahParkirCtrl, kind: _FieldKind.currency),
                 const SizedBox(height: 10),
-                _bukitFotoButton('Bukti Parkir', _fotoParkir, (f) => setState(() => _fotoParkir = f)),
+                _bukitFotoButton('Bukti Parkir (opsional)', _fotoParkir, (f) => setState(() => _fotoParkir = f)),
               ],
             ),
             const SizedBox(height: 24),

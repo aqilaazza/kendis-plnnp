@@ -257,6 +257,11 @@ class _MainTabChips extends StatelessWidget {
           final isSelected = opt.tab == value;
           final label = opt.label;
           final count = opt.count;
+          // Badge "Perlu Diisi" harus selalu mencolok (solid warning color),
+          // apapun state selected-nya — ini sinyal ada tindakan yang harus
+          // dilakukan, bukan sekadar info jumlah biasa kayak Riwayat.
+          final isUrgent = opt.tab == _MainTab.perluDiisi && count > 0;
+
           return Expanded(
             child: GestureDetector(
               onTap: () => onChanged(opt.tab),
@@ -278,8 +283,10 @@ class _MainTabChips extends StatelessWidget {
                       label,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected ? AppColors.primary : AppColors.textMuted,
+                        fontWeight: isSelected || isUrgent ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isUrgent ? AppColors.warning : AppColors.textMuted),
                       ),
                     ),
                     if (count > 0) ...[
@@ -287,7 +294,9 @@ class _MainTabChips extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
-                          color: (isSelected ? AppColors.primary : AppColors.textMuted).withOpacity(0.15),
+                          color: isUrgent
+                              ? AppColors.warning
+                              : (isSelected ? AppColors.primary : AppColors.textMuted).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -295,7 +304,9 @@ class _MainTabChips extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? AppColors.primary : AppColors.textMuted,
+                            color: isUrgent
+                                ? Colors.white
+                                : (isSelected ? AppColors.primary : AppColors.textMuted),
                           ),
                         ),
                       ),
