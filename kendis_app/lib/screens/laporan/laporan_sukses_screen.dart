@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
 
@@ -11,9 +10,16 @@ class LaporanSuksesScreen extends StatelessWidget {
   final PenugasanModel penugasan;
   const LaporanSuksesScreen({super.key, required this.penugasan});
 
+  static final _months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
+
+  static String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
+
   @override
   Widget build(BuildContext context) {
-    final tanggalSelesai = DateFormat('d MMMM yyyy', 'id_ID').format(DateTime.now());
+    final tanggalSelesai = _formatDate(DateTime.now());
 
     return Scaffold(
       backgroundColor: AppColors.background,
