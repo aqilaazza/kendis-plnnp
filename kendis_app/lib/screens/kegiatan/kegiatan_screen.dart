@@ -206,57 +206,87 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async {
-            _reload();
-            await _future;
-          },
-          child: FutureBuilder<List<KegiatanModel>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async {
+                  _reload();
+                  await _future;
+                },
+                child: FutureBuilder<List<KegiatanModel>>(
+                  future: _future,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      );
+                    }
 
-              if (snapshot.hasError) return _buildErrorState();
+                    if (snapshot.hasError) return _buildErrorState();
 
-              final originalList = snapshot.data ?? [];
-              final list = _filterList(originalList);
+                    final originalList = snapshot.data ?? [];
+                    final list = _filterList(originalList);
 
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                children: [
-                  const Text(
-                    'Kegiatan Harian',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Daftar agenda kegiatan harian operasional PLN',
-                    style: TextStyle(fontSize: 13, color: AppColors.textBody),
-                  ),
-                  const SizedBox(height: 16),
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                      children: [
+                        const Text(
+                          'Daftar agenda kegiatan harian operasional PLN.',
+                          style: TextStyle(fontSize: 13, color: AppColors.textBody),
+                        ),
+                        const SizedBox(height: 16),
 
-                  _buildSearchField(),
-                  const SizedBox(height: 16),
+                        _buildSearchField(),
+                        const SizedBox(height: 16),
 
-                  if (list.isEmpty)
-                    _buildEmptyState()
-                  else
-                    ...list.map(_buildKegiatanCard),
-                ],
-              );
-            },
-          ),
+                        if (list.isEmpty)
+                          _buildEmptyState()
+                        else
+                          ...list.map(_buildKegiatanCard),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // HEADER
+  // ---------------------------------------------------------------------
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+      ),
+      child: Row(
+        children: [
+          const Text('Kegiatan Harian',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          const Spacer(),
+          InkWell(
+            onTap: () {
+              // TODO: Buka halaman notifikasi
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.notifications_none_outlined, size: 22, color: AppColors.primary),
+            ),
+          ),
+        ],
       ),
     );
   }
