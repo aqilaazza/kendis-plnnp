@@ -364,7 +364,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
 class _Header extends StatelessWidget {
   final VoidCallback onBack;
   const _Header({required this.onBack});
-
+ 
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -385,12 +385,6 @@ class _Header extends StatelessWidget {
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.notifications_none_rounded, size: 26, color: AppColors.primary),
-          ),
-          const SizedBox(width: 4),
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: Color(0xFFE0E0E0),
-            child: Icon(Icons.person, color: Colors.white, size: 18),
           ),
         ],
       ),
