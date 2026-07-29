@@ -56,7 +56,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                         children: [
                           const Expanded(
                             child: Text(
-                              "Riwayat Pelaporan",
+                              "Riwayat Penugasan",
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -80,7 +80,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "Daftar laporan perjalanan yang telah terkirim.",
+                          "Daftar penugasan yang telah terkirim.",
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textMuted,
