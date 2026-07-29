@@ -71,104 +71,140 @@ class _LaporanScreenState extends State<LaporanScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: FutureBuilder<List<PenugasanModel>>(
-            future: _future,
-            builder: (context, snapshot) {
-              final isLoading = snapshot.connectionState == ConnectionState.waiting;
-              final allData = snapshot.data ?? [];
-              final belumDiisi = _belumDiisi(allData);
-              final riwayat = _riwayat(allData);
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: FutureBuilder<List<PenugasanModel>>(
+                  future: _future,
+                  builder: (context, snapshot) {
+                    final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                    final allData = snapshot.data ?? [];
+                    final belumDiisi = _belumDiisi(allData);
+                    final riwayat = _riwayat(allData);
 
-              // Default tab: kalau ada yang perlu diisi, buka di situ dulu.
-              // Setelah user tap tab manual sekali, jangan dipaksa pindah lagi.
-              if (!_tabTouched && belumDiisi.isEmpty && riwayat.isNotEmpty) {
-                _tab = _MainTab.riwayat;
-              }
-              final activeList = _tab == _MainTab.perluDiisi ? belumDiisi : riwayat;
+                    // Default tab: kalau ada yang perlu diisi, buka di situ dulu.
+                    // Setelah user tap tab manual sekali, jangan dipaksa pindah lagi.
+                    if (!_tabTouched && belumDiisi.isEmpty && riwayat.isNotEmpty) {
+                      _tab = _MainTab.riwayat;
+                    }
+                    final activeList = _tab == _MainTab.perluDiisi ? belumDiisi : riwayat;
 
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                children: [
-                  const Text('Riwayat Pelaporan',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                  const SizedBox(height: 4),
-                  Text('Daftar laporan perjalanan yang telah terkirim.',
-                      style: TextStyle(color: AppColors.textBody, fontSize: 13)),
-                  const SizedBox(height: 16),
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                      children: [
+                        Text('Daftar laporan perjalanan yang telah terkirim.',
+                            style: TextStyle(color: AppColors.textBody, fontSize: 13)),
+                        const SizedBox(height: 16),
 
-                  _HeroCard(),
-                  const SizedBox(height: 16),
+                        _HeroCard(),
+                        const SizedBox(height: 16),
 
-                  _MainTabChips(
-                    value: _tab,
-                    countPerluDiisi: belumDiisi.length,
-                    countRiwayat: riwayat.length,
-                    onChanged: (v) => setState(() {
-                      _tab = v;
-                      _tabTouched = true;
-                    }),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: "Cari laporan...",
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    fillColor: const Color(0xFFF5F7FA),
-                    prefixIconColor: Colors.grey,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                  const SizedBox(height: 16),
-
-                  if (isLoading)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 40),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (snapshot.hasError)
-                    Center(child: Text('Gagal memuat: ${snapshot.error}'))
-                  else if (activeList.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 40),
-                      child: Center(
-                        child: Text(
-                          _tab == _MainTab.perluDiisi
-                              ? 'Tidak ada laporan yang perlu diisi.'
-                              : 'Belum ada laporan yang terkirim.',
-                          style: TextStyle(color: AppColors.textMuted),
+                        _MainTabChips(
+                          value: _tab,
+                          countPerluDiisi: belumDiisi.length,
+                          countRiwayat: riwayat.length,
+                          onChanged: (v) => setState(() {
+                            _tab = v;
+                            _tabTouched = true;
+                          }),
                         ),
-                      ),
-                    )
-                  else
-                    ...activeList.map((p) => _LaporanCard(penugasan: p)),
+                        const SizedBox(height: 12),
 
-                  if (!isLoading && !snapshot.hasError && _tab == _MainTab.riwayat && allData.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _RingkasanBulanIni(list: allData),
-                  ],
-                ],
-              );
-            },
-          ),
+                        TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: "Cari laporan...",
+                            prefixIcon: const Icon(Icons.search),
+                            filled: true,
+                            fillColor: const Color(0xFFF5F7FA),
+                            prefixIconColor: Colors.grey,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        if (isLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 40),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (snapshot.hasError)
+                          Center(child: Text('Gagal memuat: ${snapshot.error}'))
+                        else if (activeList.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 40),
+                            child: Center(
+                              child: Text(
+                                _tab == _MainTab.perluDiisi
+                                    ? 'Tidak ada laporan yang perlu diisi.'
+                                    : 'Belum ada laporan yang terkirim.',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                            ),
+                          )
+                        else
+                          ...activeList.map((p) => _LaporanCard(penugasan: p)),
+
+                        if (!isLoading && !snapshot.hasError && _tab == _MainTab.riwayat && allData.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _RingkasanBulanIni(list: allData),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // HEADER (samakan dengan ProfilScreen)
+  // ---------------------------------------------------------------------
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+      ),
+      child: Row(
+        children: [
+          const Text('Riwayat Pelaporan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          const Spacer(),
+          InkWell(
+            onTap: () {
+              // TODO: Buka halaman notifikasi
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.notifications_none_outlined, size: 22, color: AppColors.primary),
+            ),
+          ),
+        ],
       ),
     );
   }
