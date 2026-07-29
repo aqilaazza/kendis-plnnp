@@ -41,16 +41,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
     return SafeArea(
       child: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFEAF3FB),
-              Color(0xFFF5F9FC),
-            ],
-          ),
-        ),
+        color: AppColors.background,
         child: Column(
           children: [
                 /// HEADER
@@ -59,25 +50,17 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                   color: Colors.white,
                   child: Column(
                     children: [
-                      /// Logo - Nama - Notifikasi
+                      /// Judul - Notifikasi
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: Colors.grey.shade300,
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
                           const Expanded(
                             child: Text(
-                              "Kendis",
+                              "Riwayat Pelaporan",
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ),
@@ -90,20 +73,6 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                             ),
                           ),
                         ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Riwayat Pelaporan",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
                       ),
 
                       const SizedBox(height: 6),
@@ -220,7 +189,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 _FilterChip(
-                                  label: 'Semmua',
+                                  label: 'Semua',
                                   value: 'semua',
                                   selected: _filter,
                                   onTap: _setFilter,
