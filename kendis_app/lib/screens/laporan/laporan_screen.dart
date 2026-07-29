@@ -113,12 +113,29 @@ class _LaporanScreenState extends State<LaporanScreen> {
                   const SizedBox(height: 12),
 
                   TextField(
-                    controller: _searchCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Cari laporan...',
-                      prefixIcon: Icon(Icons.search, size: 20),
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: "Cari laporan...",
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: const Color(0xFFF5F7FA),
+                    prefixIconColor: Colors.grey,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
                     ),
                   ),
+                ),
                   const SizedBox(height: 16),
 
                   if (isLoading)

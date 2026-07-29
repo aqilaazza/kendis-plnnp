@@ -13,14 +13,16 @@ class KegiatanScreen extends StatefulWidget {
 }
 
 class _KegiatanScreenState extends State<KegiatanScreen> {
-  late Future<List<KegiatanModel>> _future;
+  List<KegiatanModel> _kegiatanList = [];
+  bool _isLoading = true;
+  bool _hasError = false;
   final TextEditingController _searchController = TextEditingController();
   int? _userId;
 
   @override
   void initState() {
     super.initState();
-    _future = KegiatanService.getList();
+    _loadKegiatan();
     _loadUserId();
     _searchController.addListener(() => setState(() {}));
   }
@@ -41,7 +43,37 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
     setState(() => _userId = prefs.getInt('user_id'));
   }
 
-  void _reload() => setState(() => _future = KegiatanService.getList());
+  // Spinner full-page hanya tampil kalau belum ada data sama sekali
+  // (load pertama). Reload berikutnya (ambil/batalkan/refresh) tetap
+  // menampilkan list lama sampai data baru datang, biar tidak "ngeblank".
+  Future<void> _loadKegiatan() async {
+    final isInitialLoad = _kegiatanList.isEmpty;
+    if (isInitialLoad) {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
+    }
+
+    try {
+      final list = await KegiatanService.getList();
+      if (!mounted) return;
+      setState(() {
+        _kegiatanList = list;
+        _isLoading = false;
+        _hasError = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+      if (isInitialLoad == false) _showError('Gagal memuat data terbaru');
+    }
+  }
+
+  Future<void> _reload() => _loadKegiatan();
 
   List<KegiatanModel> _filterList(List<KegiatanModel> list) {
     final keyword = _searchController.text.trim().toLowerCase();
@@ -206,57 +238,85 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async {
-            _reload();
-            await _future;
-          },
-          child: FutureBuilder<List<KegiatanModel>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
-
-              if (snapshot.hasError) return _buildErrorState();
-
-              final originalList = snapshot.data ?? [];
-              final list = _filterList(originalList);
-
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                children: [
-                  const Text(
-                    'Kegiatan Harian',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Daftar agenda kegiatan harian operasional PLN',
-                    style: TextStyle(fontSize: 13, color: AppColors.textBody),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildSearchField(),
-                  const SizedBox(height: 16),
-
-                  if (list.isEmpty)
-                    _buildEmptyState()
-                  else
-                    ...list.map(_buildKegiatanCard),
-                ],
-              );
-            },
-          ),
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(child: _buildBody()),
+          ],
         ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // HEADER
+  // ---------------------------------------------------------------------
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+      ),
+      child: Row(
+        children: [
+          const Text('Kegiatan Harian',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          const Spacer(),
+          InkWell(
+            onTap: () {
+              // TODO: Buka halaman notifikasi
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.notifications_none_outlined, size: 22, color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // BODY
+  // ---------------------------------------------------------------------
+
+  Widget _buildBody() {
+    // Spinner full-page hanya untuk load pertama kali (belum ada data
+    // sama sekali). Sesudah itu, reload (ambil/batalkan/pull-to-refresh)
+    // tetap menampilkan list yang ada sampai data baru datang.
+    if (_isLoading && _kegiatanList.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    if (_hasError && _kegiatanList.isEmpty) return _buildErrorState();
+
+    final list = _filterList(_kegiatanList);
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _reload,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        children: [
+          const Text(
+            'Daftar agenda kegiatan harian operasional PLN',
+            style: TextStyle(fontSize: 13, color: AppColors.textBody),
+          ),
+          const SizedBox(height: 16),
+
+          _buildSearchField(),
+          const SizedBox(height: 16),
+
+          if (list.isEmpty)
+            _buildEmptyState()
+          else
+            ...list.map(_buildKegiatanCard),
+        ],
       ),
     );
   }
