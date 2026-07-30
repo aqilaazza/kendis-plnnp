@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
 import '../../models/kegiatan_model.dart';
 import '../../services/kegiatan_service.dart';
+import '../../services/badge_notifier.dart';
 
 class KegiatanScreen extends StatefulWidget {
   const KegiatanScreen({super.key});
@@ -115,6 +116,7 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
       await KegiatanService.ambilKegiatan(kegiatan.id);
       if (mounted) Navigator.pop(context); // tutup dialog loading
       _reload();
+      BadgeNotifier.instance.refresh(); // <-- TAMBAHAN: badge Kegiatan langsung update
       if (mounted) {
         await _showStatusOverlay(
           icon: Icons.check_rounded,
@@ -249,6 +251,7 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
       await KegiatanService.batalkanKegiatan(kegiatan.id);
       if (mounted) Navigator.pop(context); // tutup dialog loading
       _reload();
+      BadgeNotifier.instance.refresh(); // <-- TAMBAHAN: badge Kegiatan langsung update
       if (mounted) {
         await _showStatusOverlay(
           icon: Icons.event_busy_rounded,
