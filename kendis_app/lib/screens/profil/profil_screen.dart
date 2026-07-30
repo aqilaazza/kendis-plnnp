@@ -11,8 +11,56 @@ import 'pengaturan_notifikasi_screen.dart';
 import 'pusat_bantuan_screen.dart';
 import 'tentang_aplikasi_screen.dart';
 
-class ProfilScreen extends StatelessWidget {
+class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
+
+  @override
+  State<ProfilScreen> createState() => _ProfilScreenState();
+}
+
+class _ProfilScreenState extends State<ProfilScreen> {
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  // ---------------------------------------------------------------------
+  // LOAD / REFRESH PROFIL
+  // ---------------------------------------------------------------------
+
+  // Spinner full-page hanya untuk load pertama kali (belum ada data user
+  // sama sekali). Refresh berikutnya (pull-to-refresh) tetap menampilkan
+  // data lama sampai data baru datang, biar tidak "ngeblank".
+  Future<void> _loadProfile() async {
+    final authProvider = context.read<AuthProvider>();
+    final isInitialLoad = authProvider.currentUser == null;
+
+    if (isInitialLoad) {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
+    }
+
+    try {
+      await authProvider.loadProfile();
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
 
   // ---------------------------------------------------------------------
   // LOGOUT
@@ -154,87 +202,111 @@ class ProfilScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(context),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                children: [
-                  _buildProfileCard(context, user),
-                  const SizedBox(height: 20),
-
-                  _sectionLabel('AKUN'),
-                  _menuCard(children: [
-                    _MenuTile(
-                      icon: Icons.person_outline,
-                      label: 'Edit Profil',
-                      onTap: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const EditProfilScreen()),
-                        );
-                        if (result == true && context.mounted) {
-                          _showSuccessSnackBar(context, 'Profil berhasil diperbarui');
-                        }
-                      },
-                    ),
-                    _MenuTile(
-                      icon: Icons.lock_reset_outlined,
-                      label: 'Ganti Password',
-                      onTap: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const GantiPasswordScreen()),
-                        );
-                        if (result == true && context.mounted) {
-                          _showSuccessSnackBar(context, 'Password berhasil diperbarui');
-                        }
-                      },
-                    ),
-                    _MenuTile(
-                      icon: Icons.notifications_none_outlined,
-                      label: 'Pengaturan Notifikasi',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PengaturanNotifikasiScreen()),
-                      ),
-                    ),
-                  ]),
-
-                  const SizedBox(height: 20),
-
-                  _sectionLabel('LAINNYA'),
-                  _menuCard(children: [
-                    _MenuTile(
-                      icon: Icons.help_outline,
-                      label: 'Pusat Bantuan',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
-                      ),
-                    ),
-                    _MenuTile(
-                      icon: Icons.info_outline,
-                      label: 'Tentang Aplikasi',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TentangAplikasiScreen()),
-                      ),
-                    ),
-                    _MenuTile(
-                      icon: Icons.logout_outlined,
-                      label: 'Keluar',
-                      isDanger: true,
-                      showArrow: false,
-                      onTap: () => _confirmLogout(context),
-                    ),
-                  ]),
-
-                  const SizedBox(height: 32),
-                  _buildAppVersion(),
-                ],
-              ),
-            ),
+            Expanded(child: _buildBody(context, user)),
           ],
         ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // BODY (LOADING / ERROR / EMPTY / KONTEN)
+  // ---------------------------------------------------------------------
+
+  Widget _buildBody(BuildContext context, dynamic user) {
+    if (_isLoading && user == null) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    if (_hasError && user == null) {
+      return _buildErrorState();
+    }
+
+    if (user == null) {
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _loadProfile,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        children: [
+          _buildProfileCard(context, user),
+          const SizedBox(height: 20),
+
+          _sectionLabel('AKUN'),
+          _menuCard(children: [
+            _MenuTile(
+              icon: Icons.person_outline,
+              label: 'Edit Profil',
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfilScreen()),
+                );
+                if (result == true && context.mounted) {
+                  _showSuccessSnackBar(context, 'Profil berhasil diperbarui');
+                  _loadProfile();
+                }
+              },
+            ),
+            _MenuTile(
+              icon: Icons.lock_reset_outlined,
+              label: 'Ganti Password',
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GantiPasswordScreen()),
+                );
+                if (result == true && context.mounted) {
+                  _showSuccessSnackBar(context, 'Password berhasil diperbarui');
+                }
+              },
+            ),
+            _MenuTile(
+              icon: Icons.notifications_none_outlined,
+              label: 'Pengaturan Notifikasi',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PengaturanNotifikasiScreen()),
+              ),
+            ),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _sectionLabel('LAINNYA'),
+          _menuCard(children: [
+            _MenuTile(
+              icon: Icons.help_outline,
+              label: 'Pusat Bantuan',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
+              ),
+            ),
+            _MenuTile(
+              icon: Icons.info_outline,
+              label: 'Tentang Aplikasi',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TentangAplikasiScreen()),
+              ),
+            ),
+            _MenuTile(
+              icon: Icons.logout_outlined,
+              label: 'Keluar',
+              isDanger: true,
+              showArrow: false,
+              onTap: () => _confirmLogout(context),
+            ),
+          ]),
+
+          const SizedBox(height: 32),
+          _buildAppVersion(),
+        ],
       ),
     );
   }
@@ -415,6 +487,78 @@ class ProfilScreen extends StatelessWidget {
         ],
       ),
       child: Column(children: children),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // EMPTY / ERROR STATE
+  // ---------------------------------------------------------------------
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_off_outlined, size: 48, color: AppColors.textMuted.withOpacity(0.5)),
+            const SizedBox(height: 12),
+            const Text('Data profil tidak ditemukan',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text('Coba muat ulang untuk menampilkan data profil Anda.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 40,
+              child: ElevatedButton(
+                onPressed: _loadProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                child: const Text('Muat Ulang', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppColors.danger.withOpacity(0.7)),
+            const SizedBox(height: 12),
+            const Text('Gagal memuat profil',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 6),
+            const Text('Periksa koneksi internet Anda.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 40,
+              child: ElevatedButton(
+                onPressed: _loadProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                child: const Text('Coba Lagi', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
