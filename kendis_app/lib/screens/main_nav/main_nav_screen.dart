@@ -6,7 +6,7 @@ import '../penugasan/penugasan_list_screen.dart';
 import '../laporan/laporan_screen.dart';
 import '../kegiatan/kegiatan_screen.dart';
 import '../profil/profil_screen.dart';
-import '../../services/badge_service.dart'; // sesuaikan path sesuai lokasi file di project kamu
+import '../../services/badge_notifier.dart'; // sesuaikan path sesuai lokasi file di project kamu
 
 class MainNavScreen extends StatefulWidget {
   const MainNavScreen({super.key});
@@ -19,47 +19,36 @@ class _MainNavScreenState extends State<MainNavScreen> {
   int _currentIndex = 0;
 
   // ==========================================================
-  // BADGE COUNT STATE
-  // Diisi dari endpoint GET /notifikasi/badge_count.php lewat BadgeService.
+  // BADGE COUNT
+  // Nempel ke BadgeNotifier global. Begitu ada screen lain yang
+  // panggil BadgeNotifier.instance.refresh() (mis. setelah submit
+  // laporan / ambil kegiatan / mulai tugas), badge di sini langsung
+  // ikut update tanpa perlu nunggu timer.
   // ==========================================================
-  int _penugasanBelumDijalankan = 0; // index 1 (Tugas)
-  int _kegiatanBelumDipilih = 0;     // index 2 (Kegiatan, tombol tengah)
-  int _laporanBelumDiisi = 0;        // index 3 (Laporan)
-
   Timer? _badgeTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadBadgeCounts();
+    BadgeNotifier.instance.addListener(_onBadgeChanged);
+    BadgeNotifier.instance.refresh();
 
-    // Auto-refresh badge tiap 60 detik
-    _badgeTimer = Timer.periodic(const Duration(seconds: 60), (_) => _loadBadgeCounts());
+    // Polling ringan tiap 30 detik sebagai jaring pengaman (misal ada
+    // perubahan dari luar app, mis. driver lain ambil kegiatan yang sama).
+    // Update instan tetap didapat dari refresh() yang dipanggil manual.
+    _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) => BadgeNotifier.instance.refresh());
   }
 
   @override
   void dispose() {
     _badgeTimer?.cancel();
+    BadgeNotifier.instance.removeListener(_onBadgeChanged);
     super.dispose();
   }
 
-  Future<void> _loadBadgeCounts() async {
-    try {
-      final counts = await BadgeService.fetchBadgeCounts();
-      if (!mounted) return;
-      setState(() {
-        _penugasanBelumDijalankan = counts.tugasBelumDijalankan;
-        _kegiatanBelumDipilih = counts.kegiatanBelumDipilih;
-        _laporanBelumDiisi = counts.laporanBelumDiisi;
-      });
-    } catch (e) {
-      // Gagal ambil badge (misal koneksi lagi jelek) 
-      debugPrint('Gagal memuat badge count: $e');
-    }
+  void _onBadgeChanged() {
+    if (mounted) setState(() {});
   }
-
-  /// Panggil method ini dari child screen 
-  void refreshBadges() => _loadBadgeCounts();
 
   // Urutan: Dashboard, Tugas, Kegiatan (center/floating), Laporan, Profil
   final _screens = const [
@@ -81,13 +70,14 @@ class _MainNavScreenState extends State<MainNavScreen> {
   static const int _centerIndex = 2;
 
   int _badgeCountFor(int index) {
+    final counts = BadgeNotifier.instance.counts;
     switch (index) {
       case 1:
-        return _penugasanBelumDijalankan;
+        return counts.tugasBelumDijalankan;
       case 2:
-        return _kegiatanBelumDipilih;
+        return counts.kegiatanBelumDipilih;
       case 3:
-        return _laporanBelumDiisi;
+        return counts.laporanBelumDiisi;
       default:
         return 0;
     }
@@ -157,7 +147,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
               onTap: () => setState(() => _currentIndex = _centerIndex),
               child: _NotificationBadge(
                 count: _badgeCountFor(_centerIndex),
-                badgeOffset: const Offset(4, -2),
+                large: true,
                 child: Container(
                   width: 64,
                   height: 64,
@@ -254,17 +244,21 @@ class _MainNavScreenState extends State<MainNavScreen> {
   }
 }
 
-/// Widget badge angka ala WhatsApp, ditempel di pojok kanan-atas child-nya.
+/// Widget badge angka ala WhatsApp, "ngambang" rapi di pojok kanan-atas
+/// child-nya (sedikit overhang keluar, bukan nyempil ke dalam).
 /// Kalau count == 0, badge tidak ditampilkan sama sekali.
 class _NotificationBadge extends StatelessWidget {
   final Widget child;
   final int count;
-  final Offset badgeOffset;
+
+  /// Set true untuk child yang lebih besar (mis. tombol melayang 64px)
+  /// supaya badge sedikit lebih besar & overhang-nya proporsional.
+  final bool large;
 
   const _NotificationBadge({
     required this.child,
     required this.count,
-    this.badgeOffset = const Offset(2, -2),
+    this.large = false,
   });
 
   @override
@@ -272,28 +266,40 @@ class _NotificationBadge extends StatelessWidget {
     if (count <= 0) return child;
 
     final label = count > 99 ? '99+' : '$count';
+    final overhang = large ? -6.0 : -4.0;
+    final minSize = large ? 20.0 : 17.0;
+    final fontSize = large ? 11.0 : 10.0;
+    final borderWidth = large ? 2.0 : 1.5;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
         child,
         Positioned(
-          top: badgeOffset.dy,
-          right: badgeOffset.dx,
+          top: overhang,
+          right: overhang,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            constraints: BoxConstraints(minWidth: minSize, minHeight: minSize),
             decoration: BoxDecoration(
               color: const Color(0xFFFF3B30), // merah ala notif WA/iOS
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white, width: 1.5),
+              border: Border.all(color: Colors.white, width: borderWidth),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
             alignment: Alignment.center,
             child: Text(
               label,
-              style: const TextStyle(
+              textAlign: TextAlign.center,
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 9.5,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w700,
                 height: 1,
               ),

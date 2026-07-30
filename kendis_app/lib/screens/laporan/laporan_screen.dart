@@ -20,7 +20,6 @@ class _LaporanScreenState extends State<LaporanScreen> {
   late Future<List<PenugasanModel>> _future;
   final _searchCtrl = TextEditingController();
   _MainTab _tab = _MainTab.perluDiisi;
-  bool _tabTouched = false; // true setelah user pertama kali tap tab manual
 
   @override
   void initState() {
@@ -85,11 +84,6 @@ class _LaporanScreenState extends State<LaporanScreen> {
                     final belumDiisi = _belumDiisi(allData);
                     final riwayat = _riwayat(allData);
 
-                    // Default tab: kalau ada yang perlu diisi, buka di situ dulu.
-                    // Setelah user tap tab manual sekali, jangan dipaksa pindah lagi.
-                    if (!_tabTouched && belumDiisi.isEmpty && riwayat.isNotEmpty) {
-                      _tab = _MainTab.riwayat;
-                    }
                     final activeList = _tab == _MainTab.perluDiisi ? belumDiisi : riwayat;
 
                     return ListView(
@@ -106,10 +100,7 @@ class _LaporanScreenState extends State<LaporanScreen> {
                           value: _tab,
                           countPerluDiisi: belumDiisi.length,
                           countRiwayat: riwayat.length,
-                          onChanged: (v) => setState(() {
-                            _tab = v;
-                            _tabTouched = true;
-                          }),
+                          onChanged: (v) => setState(() => _tab = v),
                         ),
                         const SizedBox(height: 12),
 
@@ -342,7 +333,8 @@ class _MainTabChips extends StatelessWidget {
                             : (isUrgent ? AppColors.warning : AppColors.textMuted),
                       ),
                     ),
-                    if (count > 0) ...[
+                    // Badge angka HANYA muncul di tab "Perlu Diisi".
+                    if (opt.tab == _MainTab.perluDiisi && count > 0) ...[
                       const SizedBox(width: 5),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),

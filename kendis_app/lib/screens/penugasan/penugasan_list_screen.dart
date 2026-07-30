@@ -16,9 +16,10 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   // Ini), bukan filter status. Jika backend masih mengharapkan status
   // (semua/menunggu/diproses/selesai), sesuaikan value di bawah ini dengan
   // yang didukung PenugasanService.getList().
-  String _filter = 'semua';
+  String _filter = 'aktif';
   late Future<List<PenugasanModel>> _future;
   late Future<Map<String, dynamic>> _ringkasanFuture;
+  late Future<int> _aktifCountFuture;
 
   @override
   void initState() {
@@ -27,6 +28,9 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
     // getRingkasan() sekarang sudah ada di PenugasanService (menyambung ke
     // endpoint ringkasan.php yang baru).
     _ringkasanFuture = PenugasanService.getRingkasan();
+    // Jumlah data untuk badge chip "Aktif" — diambil terpisah supaya angkanya
+    // tetap tampil walaupun user sedang berada di filter Semua/Selesai.
+    _aktifCountFuture = PenugasanService.getList(status: 'aktif').then((l) => l.length);
   }
 
   void _setFilter(String filter) {
@@ -181,11 +185,17 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                _FilterChip(
-                                  label: 'Aktif',
-                                  value: 'aktif',
-                                  selected: _filter,
-                                  onTap: _setFilter,
+                                FutureBuilder<int>(
+                                  future: _aktifCountFuture,
+                                  builder: (context, snap) {
+                                    return _FilterChip(
+                                      label: 'Aktif',
+                                      value: 'aktif',
+                                      selected: _filter,
+                                      onTap: _setFilter,
+                                      count: snap.data,
+                                    );
+                                  },
                                 ),
                                 const SizedBox(width: 8),
                                 _FilterChip(
@@ -342,7 +352,14 @@ class _FilterChip extends StatelessWidget {
   final String value;
   final String selected;
   final Function(String) onTap;
-  const _FilterChip({required this.label, required this.value, required this.selected, required this.onTap});
+  final int? count;
+  const _FilterChip({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+    this.count,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -358,13 +375,39 @@ class _FilterChip extends StatelessWidget {
             color: isSelected ? AppColors.primary.withOpacity(.35) : const Color(0xFFE8EDF2),
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.primary : AppColors.textBody,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : AppColors.textBody,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            // Badge angka jumlah data — hanya ditampilkan kalau count diisi
+            // (dipakai khusus untuk chip "Aktif"). Warna kuning (warning)
+            // solid, sama seperti badge "Perlu Diisi" di layar Laporan.
+            if (count != null && count! > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.warning,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

@@ -3,6 +3,7 @@ import '../../core/app_theme.dart';
 import '../../core/api_client.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
+import '../../services/badge_notifier.dart';
 import '../laporan/isi_laporan_screen.dart';
 import 'pilih_kendaraan_screen.dart';
 
@@ -36,6 +37,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Perjalanan dimulai. Selamat bertugas!'), backgroundColor: AppColors.success),
       );
+      BadgeNotifier.instance.refresh(); // <-- TAMBAHAN: status berubah -> badge Tugas langsung update
       _reload();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -53,7 +55,10 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
   Future<void> _onTapMulaiPerjalanan(Map<String, dynamic> d) async {
     if (d['nopol'] == null) {
       final started = await showPilihKendaraanDialog(context, int.parse(d['id'].toString()));
-      if (started) _reload();
+      if (started) {
+        BadgeNotifier.instance.refresh(); // <-- TAMBAHAN: jaga-jaga kalau dialog belum refresh sendiri
+        _reload();
+      }
     } else {
       await _mulaiPerjalanan();
     }
