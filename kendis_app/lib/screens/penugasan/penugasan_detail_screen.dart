@@ -4,6 +4,7 @@ import '../../core/api_client.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
 import '../laporan/isi_laporan_screen.dart';
+import 'pilih_kendaraan_screen.dart';
 
 class PenugasanDetailScreen extends StatefulWidget {
   final int id;
@@ -41,6 +42,20 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.danger));
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// Ditekan dari tombol "Mulai Perjalanan". Kalau kendaraan untuk penugasan
+  /// ini belum dipilih (nopol masih null), buka dulu popup Pilih Kendaraan —
+  /// popup itu sendiri yang sekaligus memulai perjalanan begitu dikonfirmasi.
+  /// Kalau kendaraan sudah ada (mis. penugasan lama / sudah pernah dipilih),
+  /// langsung mulai perjalanan seperti biasa tanpa perlu pilih kendaraan lagi.
+  Future<void> _onTapMulaiPerjalanan(Map<String, dynamic> d) async {
+    if (d['nopol'] == null) {
+      final started = await showPilihKendaraanDialog(context, int.parse(d['id'].toString()));
+      if (started) _reload();
+    } else {
+      await _mulaiPerjalanan();
     }
   }
 
@@ -108,9 +123,6 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
             // NOTE: field-field berikut belum tersedia di payload/model saat ini,
             // jadi ditampilkan hanya jika ada di response API (kalau backend
             // sudah menyertakannya), dan disembunyikan/pakai fallback kalau tidak:
-            // - timestamp per-tahap (diajukan/persetujuan/driver berangkat) untuk
-            //   progress tracker di atas — saat ini ditampilkan tanpa tanggal
-            //   spesifik karena tidak ada field created_at/approved_at/dst.
             // - info driver (nama & no HP) — d['nama_driver'] / d['hp_driver']
             // - d['surat_penugasan'] (url/file) untuk tombol "Lihat File"
             // - d['catatan_pool']
@@ -294,7 +306,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: _submitting ? null : _mulaiPerjalanan,
+                              onPressed: _submitting ? null : () => _onTapMulaiPerjalanan(d),
                               icon: _submitting
                                   ? const SizedBox(
                                       width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
@@ -360,11 +372,11 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
 }
 
 /// Header kustom (bukan AppBar bawaan) supaya gayanya sama dengan header di
-/// PenugasanListScreen: back arrow, judul, ikon notifikasi, avatar.
+/// PenugasanListScreen: back arrow, judul, ikon notifikasi.
 class _Header extends StatelessWidget {
   final VoidCallback onBack;
   const _Header({required this.onBack});
- 
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -396,8 +408,8 @@ class _Header extends StatelessWidget {
 /// yang bisa diklik untuk membuka/menutup rincian "Riwayat Proses" di
 /// bawahnya (daftar 6 tahap dengan status & waktu masing-masing).
 ///
-/// Waktu tiap tahap dan status selesai/belumnya sekarang ditarik dari data
-/// yang sudah nyata ada di backend (lihat detail.php): tanggal_diajukan
+/// Waktu tiap tahap dan status selesai/belumnya ditarik dari data yang
+/// sudah nyata ada di backend (lihat detail.php): tanggal_diajukan
 /// (request_kendis.created_at), tanggal_persetujuan_atasan/tanggal_driver_
 /// ditunjuk/tanggal_persetujuan_pool/tanggal_mulai (dari tabel notifikasi),
 /// dan tanggal_selesai (laporan_driver.created_at). Sebuah tahap dianggap
@@ -419,7 +431,6 @@ class _ProgressTrackerState extends State<_ProgressTracker> {
   Widget build(BuildContext context) {
     final d = widget.data;
     final statusRequest = d['status_request']?.toString();
-    final isBerangkat = d['is_berangkat'].toString() == '1';
 
     final tglPersetujuanAtasan = d['tanggal_persetujuan_atasan']?.toString();
     final tglDriverDitunjuk = d['tanggal_driver_ditunjuk']?.toString();
@@ -433,8 +444,12 @@ class _ProgressTrackerState extends State<_ProgressTracker> {
     final driverDitunjukDone = tglDriverDitunjuk != null ||
         ['driver_assigned', 'approved_pool', 'on_trip', 'completed', 'rated'].contains(statusRequest);
     final persetujuanPoolDone = tglPersetujuanPool != null || ['approved_pool', 'on_trip', 'completed', 'rated'].contains(statusRequest);
-    final perjalananDone = tglMulai != null || isBerangkat || ['on_trip', 'completed', 'rated'].contains(statusRequest);
     final selesaiDone = tglSelesai != null || ['completed', 'rated'].contains(statusRequest);
+    // "Perjalanan" baru dianggap selesai (centang hijau) kalau seluruh siklus
+    // sudah kelar (selesaiDone) — selama masih on_trip, tahap ini harus tetap
+    // jadi "current" (bukan done), supaya current-step & progress bar gak
+    // ikut melompat ke "Selesai" padahal laporan belum masuk.
+    final perjalananDone = selesaiDone;
 
     final steps = <_TimelineStep>[
       _TimelineStep(
