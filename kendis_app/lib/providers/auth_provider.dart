@@ -87,6 +87,20 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================
+  // LOAD / REFRESH PROFILE
+  // ============================================================
+
+  /// Ambil data profil terbaru dari server (GET /profil/me.php) dan
+  /// simpan ke currentUser. Exception dilempar lagi ke pemanggil (mis.
+  /// ProfilScreen) supaya UI di sana yang menentukan tampilan error-nya.
+  Future<void> loadProfile() async {
+    final user = await AuthService.getProfile();
+
+    currentUser = user;
+    notifyListeners();
+  }
+
+  // ============================================================
   // UPDATE PROFILE
   // ============================================================
 
