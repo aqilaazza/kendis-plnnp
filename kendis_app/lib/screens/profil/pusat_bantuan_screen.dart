@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
 
 class PusatBantuanScreen extends StatefulWidget {
@@ -90,10 +91,8 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
                     _buildFaqCard(),
                     const SizedBox(height: 24),
 
-                    // HUBUNGI KAMI
-                    _sectionLabel('BUTUH BANTUAN LAIN?'),
-                    const SizedBox(height: 8),
-                    _buildContactCard(),
+                    // HUBUNGI ADMIN
+                    _buildAdminSection(),
                   ],
                 ),
               ),
@@ -334,87 +333,82 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
   }
 
   // ===================================================================
-  // CONTACT CARD
+  // HUBUNGI ADMIN (WHATSAPP)
   // ===================================================================
 
-  Widget _buildContactCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildContactItem(
-            icon: Icons.support_agent_outlined,
-            title: 'Hubungi Admin',
-            subtitle: 'Dapatkan bantuan dari admin aplikasi',
-            onTap: () {
-              // TODO: Nanti bisa diarahkan ke WhatsApp / telepon admin
-            },
-          ),
-          Container(height: 1, color: Colors.grey.shade100),
-          _buildContactItem(
-            icon: Icons.email_outlined,
-            title: 'Kirim Pesan',
-            subtitle: 'Sampaikan pertanyaan atau kendala Anda',
-            onTap: () {
-              // TODO: Nanti bisa diarahkan ke email atau form bantuan
-            },
-          ),
-        ],
-      ),
+  static const String _adminName = 'Admin Ubaid';
+  static const String _adminWaNumber = '6285233223872';
+  static const String _adminWaNumberDisplay = '0852 3322 3872';
+
+  Future<void> _openWhatsApp() async {
+    const message = 'Halo, saya butuh bantuan terkait aplikasi Kendis Driver.';
+    final uri = Uri.parse('https://wa.me/$_adminWaNumber?text=${Uri.encodeComponent(message)}');
+
+    final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Judul section + kartu kontak admin
+  // ---------------------------------------------------------------------
+
+  Widget _buildAdminSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.headset_mic_outlined, size: 20, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text(
+              'Hubungi Admin',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _buildAdminCard(),
+      ],
     );
   }
 
-  // ===================================================================
-  // CONTACT ITEM
-  // ===================================================================
-
-  Widget _buildContactItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 20, color: AppColors.primary),
+  Widget _buildAdminCard() {
+    return InkWell(
+      onTap: _openWhatsApp,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              _adminName,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              _adminWaNumberDisplay,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+                decoration: TextDecoration.underline,
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(subtitle, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
