@@ -33,11 +33,12 @@ class TopCitiesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tujuan Dinas Terpopuler',
+          const Text('Tujuan Dinas Terpopuler',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           const SizedBox(height: 2),
-          Text('5 Kota tujuan perjalanan tersering', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const Text('5 Kota tujuan perjalanan tersering', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           const SizedBox(height: 16),
+          // Hanya merender chart jika ada data dari MySQL
           if (isLoading)
             Container(height: 200, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)))
           else if (cities != null && cities.isNotEmpty)
@@ -113,7 +114,7 @@ class _PieChart extends StatelessWidget {
                       textAlign: TextAlign.center),
                   const SizedBox(height: 2),
                   Text('${cities.first.jumlahTrip} Trip',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 ],
               ),
             ],
@@ -150,7 +151,7 @@ class _PieLegend extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            Text('${city.kota} (${city.jumlahTrip})', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+            Text('${city.kota} (${city.jumlahTrip})', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
           ],
         );
       }),

@@ -21,16 +21,26 @@ class BiayaCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: IntrinsicHeight(
         child: Row(
           children: [
-            Container(width: 4, decoration: const BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(18), bottomLeft: Radius.circular(18)),
-            )),
+            Container(
+              width: 4,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  bottomLeft: Radius.circular(18),
+                ),
+              ),
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -39,46 +49,129 @@ class BiayaCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text('BIAYA DILAPORKAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+                        const Text(
+                          'BIAYA DILAPORKAN',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                         const Spacer(),
                         if (isLoading)
-                          Container(width: 60, height: 22, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(20)))
+                          Container(
+                            width: 60,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          )
                         else if (jumlahNota != null)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFF006780).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                            child: Text('$jumlahNota Nota', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF006780).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '$jumlahNota Nota',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
                           ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     if (isLoading)
-                      Container(width: 140, height: 32, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(8)))
+                      Container(
+                        width: 140,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      )
                     else if (total != null)
                       Text(
-                        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(total),
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp ',
+                          decimalDigits: 0,
+                        ).format(total),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       )
                     else
-                      Text('-', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                      const Text(
+                        '-',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle)),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.danger,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                         const SizedBox(width: 6),
-                        if (perluLaporan != null)
-                          Text('Perlu Laporan: $perluLaporan Tugas', style: TextStyle(fontSize: 12, color: AppColors.textBody))
+                        // Logika diperbaiki agar tidak muncul angka 3 jika kosong
+                        if (perluLaporan != null && perluLaporan > 0)
+                          Text(
+                            'Perlu Laporan: $perluLaporan Tugas',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textBody,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          )
                         else
-                          Text('Data belum tersedia', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          const Text(
+                            'Tidak ada laporan tertunda',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
                         const Spacer(),
                         ElevatedButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LaporanScreen())),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LaporanScreen(),
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           child: const Text('Buat Laporan'),
                         ),

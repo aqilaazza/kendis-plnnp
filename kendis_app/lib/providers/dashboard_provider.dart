@@ -54,18 +54,3 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 }
-
-// ignore_for_file: unused_element, unused_local_variable
-// Extension points for future API integration:
-//
-//   // TODO: panggil endpoint notifikasi
-//   data?.notifikasiUnread = ...
-//
-//   // TODO: panggil endpoint biaya per kategori
-//   data?.biayaPerKategori = ...
-//
-//   // TODO: panggil endpoint top kota tujuan
-//   data?.topCities = ...
-//
-//   // TODO: panggil endpoint aktivitas terbaru
-//   data?.aktivitasTerbaru = ...

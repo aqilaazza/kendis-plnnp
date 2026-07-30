@@ -1,40 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../config/app_config.dart';
 import '../core/api_client.dart';
 import '../models/user_model.dart';
 
 class AuthService {
   static Future<UserModel> login(String nid, String password) async {
-    // TODO HAPUS - DEBUG
-    const ep = '/auth/login.php';
-    debugPrint('=== LOGIN REQUEST ===');
-    debugPrint('Endpoint: $ep');
-    debugPrint('Candidate URLs: ${AppConfig.candidateUrls}');
-    debugPrint('Body keys: nid, password');
-
-    Map<String, dynamic> res;
-    try {
-      res = await ApiClient.post(ep, {
-        'nid': nid,
-        'password': password,
-      });
-      // TODO HAPUS - DEBUG
-      debugPrint('Login response status: true');
-      debugPrint('Login response data keys: ${res.keys}');
-    } catch (e) {
-      // TODO HAPUS - DEBUG
-      debugPrint('=== LOGIN ERROR ===');
-      debugPrint('Exception type: ${e.runtimeType}');
-      debugPrint('Exception toString: $e');
-      if (e is ApiException) {
-        debugPrint('ApiException statusCode: ${e.statusCode}');
-        debugPrint('ApiException message: ${e.message}');
-      }
-      debugPrint('Stack trace: ${StackTrace.current}');
-      rethrow;
-    }
-
+    final res = await ApiClient.post('/auth/login.php', {
+      'nid': nid,
+      'password': password,
+    });
     final data = res['data'] as Map<String, dynamic>;
     final token = data['token'] as String;
     final user = UserModel.fromJson(data['user']);
