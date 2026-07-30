@@ -93,9 +93,6 @@ class _LaporanScreenState extends State<LaporanScreen> {
                             style: TextStyle(color: AppColors.textBody, fontSize: 13)),
                         const SizedBox(height: 16),
 
-                        _HeroCard(),
-                        const SizedBox(height: 16),
-
                         _MainTabChips(
                           value: _tab,
                           countPerluDiisi: belumDiisi.length,
@@ -201,67 +198,6 @@ class _LaporanScreenState extends State<LaporanScreen> {
   }
 }
 
-/// Kartu hero dengan foto latar PLTU Paiton + gradient overlay.
-class _HeroCard extends StatelessWidget {
-  const _HeroCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 150,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset('assets/images/hero_paiton.png', fit: BoxFit.cover),
-          // gradient gelap dari bawah biar teks tetap kebaca
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  AppColors.primaryDark.withOpacity(0.92),
-                  AppColors.primaryDark.withOpacity(0.55),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.55, 1.0],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text(
-                  'PLN NUSANTARA POWER UP PAITON',
-                  style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.5),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Kualitas Armada Nomor Satu',
-                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Mendukung operasional pembangkit listrik dengan armada kendaraan yang handal dan terawat.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _TabOption {
   final _MainTab tab;
   final String label;
@@ -334,6 +270,7 @@ class _MainTabChips extends StatelessWidget {
                       ),
                     ),
                     // Badge angka HANYA muncul di tab "Perlu Diisi".
+                    // Tab "Riwayat" tidak menampilkan jumlah data.
                     if (opt.tab == _MainTab.perluDiisi && count > 0) ...[
                       const SizedBox(width: 5),
                       Container(

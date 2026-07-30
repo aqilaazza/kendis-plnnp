@@ -90,10 +90,8 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
                     _buildFaqCard(),
                     const SizedBox(height: 24),
 
-                    // HUBUNGI KAMI
-                    _sectionLabel('BUTUH BANTUAN LAIN?'),
-                    const SizedBox(height: 8),
-                    _buildContactCard(),
+                    // HUBUNGI ADMIN
+                    _buildAdminSection(),
                   ],
                 ),
               ),
@@ -333,11 +331,22 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
     );
   }
 
-  // ===================================================================
-  // CONTACT CARD
-  // ===================================================================
+  // ---------------------------------------------------------------------
+  // Judul section + kartu kontak admin (gaya tile, sama seperti menu lain)
+  // ---------------------------------------------------------------------
 
-  Widget _buildContactCard() {
+  Widget _buildAdminSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('BUTUH BANTUAN LAIN?'),
+        const SizedBox(height: 8),
+        _buildAdminCard(),
+      ],
+    );
+  }
+
+  Widget _buildAdminCard() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -346,33 +355,16 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
           BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
-      child: Column(
-        children: [
-          _buildContactItem(
-            icon: Icons.support_agent_outlined,
-            title: 'Hubungi Admin',
-            subtitle: 'Dapatkan bantuan dari admin aplikasi',
-            onTap: () {
-              // TODO: Nanti bisa diarahkan ke WhatsApp / telepon admin
-            },
-          ),
-          Container(height: 1, color: Colors.grey.shade100),
-          _buildContactItem(
-            icon: Icons.email_outlined,
-            title: 'Kirim Pesan',
-            subtitle: 'Sampaikan pertanyaan atau kendala Anda',
-            onTap: () {
-              // TODO: Nanti bisa diarahkan ke email atau form bantuan
-            },
-          ),
-        ],
+      child: _buildContactItem(
+        icon: Icons.support_agent_outlined,
+        title: 'Hubungi Admin',
+        subtitle: 'Dapatkan bantuan dari admin aplikasi',
+        onTap: () {
+          // TODO: arahkan ke WhatsApp / telepon admin
+        },
       ),
     );
   }
-
-  // ===================================================================
-  // CONTACT ITEM
-  // ===================================================================
 
   Widget _buildContactItem({
     required IconData icon,
@@ -386,15 +378,15 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(9),
                 ),
                 child: Icon(icon, size: 20, color: AppColors.primary),
               ),
@@ -403,12 +395,10 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                    ),
+                    Text(title,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     const SizedBox(height: 3),
-                    Text(subtitle, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
               ),
