@@ -8,6 +8,7 @@ import '../../core/app_theme.dart';
 import '../../core/api_client.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/laporan_service.dart';
+import '../../services/badge_notifier.dart'; 
 import 'laporan_sukses_screen.dart';
 
 final _idRupiah = NumberFormat.decimalPattern('id_ID');
@@ -245,6 +246,7 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
         fotoTolBytes: _fotoTolBytes,
         fotoTolName: _fotoTolName,
       );
+      BadgeNotifier.instance.refresh(); // <-- TAMBAHAN: laporan baru masuk -> badge Laporan langsung update
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => LaporanSuksesScreen(penugasan: widget.penugasan)),
