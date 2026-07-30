@@ -113,41 +113,126 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
     try {
       _showLoading();
       await KegiatanService.ambilKegiatan(kegiatan.id);
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context); // tutup dialog loading
       _reload();
-      if (mounted) _showSuccess('Kegiatan berhasil diambil');
+      if (mounted) {
+        await _showStatusOverlay(
+          icon: Icons.check_rounded,
+          color: AppColors.primary,
+          message: 'Kegiatan Berhasil Diambil',
+        );
+      }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       if (mounted) _showError(e.toString());
     }
   }
 
+  // Overlay full-layar berisi lingkaran icon besar + keterangan, muncul
+  // sebentar lalu otomatis menutup diri sendiri kembali ke list (yang
+  // sudah di-reload di belakang layar). Tidak perlu tombol atau halaman baru.
+  Future<void> _showStatusOverlay({required IconData icon, required Color color, required String message}) {
+    return showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (_, __, ___) => _StatusOverlay(icon: icon, color: color, message: message),
+      transitionBuilder: (ctx, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+    );
+  }
+
   Future<void> _konfirmasiAmbil(KegiatanModel kegiatan) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Pilih Kegiatan',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-        content: const Text(
-          'Apakah Anda yakin ingin mengambil kegiatan ini sebagai tugas Anda?',
-          style: TextStyle(fontSize: 13),
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          width: 280,
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ICON BADGE
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.add_task_outlined, size: 28, color: AppColors.primary),
+              ),
+              const SizedBox(height: 16),
+
+              // TITLE
+              const Text(
+                'Pilih Kegiatan Ini?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+
+              // MESSAGE
+              Text(
+                'Kegiatan ini akan menjadi tugas Anda. Pastikan Anda siap menjalankannya sesuai jadwal.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 20),
+
+              // TOMBOL YA, PILIH
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Ya, Pilih', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // TOMBOL BATAL
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    side: BorderSide(color: Colors.grey.shade200, width: 1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Batal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(fontSize: 13)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            child: const Text('Ya, Pilih', style: TextStyle(fontSize: 13)),
-          ),
-        ],
       ),
     );
 
@@ -162,9 +247,15 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
     try {
       _showLoading();
       await KegiatanService.batalkanKegiatan(kegiatan.id);
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context); // tutup dialog loading
       _reload();
-      if (mounted) _showSuccess('Pengambilan kegiatan berhasil dibatalkan');
+      if (mounted) {
+        await _showStatusOverlay(
+          icon: Icons.event_busy_rounded,
+          color: AppColors.danger,
+          message: 'Tugas Berhasil Dibatalkan',
+        );
+      }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       if (mounted) _showError(e.toString());
@@ -174,29 +265,92 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
   Future<void> _konfirmasiBatalkan(KegiatanModel kegiatan) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Batalkan Tugas?',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-        content: const Text(
-          'Apakah Anda yakin ingin membatalkan pengambilan kegiatan ini?',
-          style: TextStyle(fontSize: 13),
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          width: 280,
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ICON BADGE
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.event_busy_outlined, size: 28, color: AppColors.danger),
+              ),
+              const SizedBox(height: 16),
+
+              // TITLE
+              const Text(
+                'Batalkan Tugas?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+
+              // MESSAGE
+              Text(
+                'Kegiatan ini akan dilepas dan bisa diambil kembali oleh driver lain. Tindakan ini tidak dapat dibatalkan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 20),
+
+              // TOMBOL YA, BATALKAN
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.danger,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Ya, Batalkan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // TOMBOL TIDAK
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    side: BorderSide(color: Colors.grey.shade200, width: 1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Tidak', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Tidak', style: TextStyle(fontSize: 13)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            child: const Text('Ya, Batalkan', style: TextStyle(fontSize: 13)),
-          ),
-        ],
       ),
     );
 
@@ -658,6 +812,89 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// STATUS OVERLAY
+// Lingkaran icon besar + keterangan singkat, muncul sebentar lalu menutup
+// dirinya sendiri. Dipakai sesudah ambil/batalkan kegiatan berhasil —
+// tidak perlu tombol/interaksi apa pun. Warna & icon menyesuaikan aksi.
+// =============================================================================
+
+class _StatusOverlay extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final String message;
+
+  const _StatusOverlay({required this.icon, required this.color, required this.message});
+
+  @override
+  State<_StatusOverlay> createState() => _StatusOverlayState();
+}
+
+class _StatusOverlayState extends State<_StatusOverlay> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 450))..forward();
+
+    // Auto-close sesudah sempat kebaca user, lalu balik ke list di belakangnya.
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: ScaleTransition(
+          scale: CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 116,
+                height: 116,
+                decoration: BoxDecoration(
+                  color: widget.color.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: widget.color,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: widget.color.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 6)),
+                      ],
+                    ),
+                    child: Icon(widget.icon, size: 42, color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                widget.message,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
         ),
       ),
     );
