@@ -105,13 +105,11 @@ class _Chart extends StatelessWidget {
                       final idx = value.toInt();
                       if (idx < 0 || idx >= categories.length) return const SizedBox.shrink();
                       
-                      // Menambahkan nama Bulan dan Tahun (misal: "Jul 2026")
-                      final labelBulan = categories[idx].label;
-                      final tahun = DateTime.now().year; 
-                      
+                      // Label bulan dari backend sudah berisi bulan + tahun
+                      // (misal: "Jul 2026"), jadi cukup tampilkan apa adanya.
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text('$labelBulan $tahun', style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                        child: Text(categories[idx].label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
                       );
                     },
                   ),

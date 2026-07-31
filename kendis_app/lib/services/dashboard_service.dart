@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../core/api_client.dart';
 import '../models/dashboard_model.dart';
 
@@ -9,22 +10,22 @@ class DashboardService {
     final dashData = dashRes['data'] as Map<String, dynamic>;
     
     // Melacak data dari profil
-    print('=== JSON PROFIL ===');
-    print(dashData);
+    debugPrint('=== JSON PROFIL ===');
+    debugPrint(dashData.toString());
 
     try {
       final ringkasanRes = await ApiClient.get('/penugasan/ringkasan.php?periode=bulan_ini');
       final ringkasanData = ringkasanRes['data'] as Map<String, dynamic>;
       
       // Melacak data dari ringkasan
-      print('=== JSON RINGKASAN ===');
-      print(ringkasanData);
+      debugPrint('=== JSON RINGKASAN ===');
+      debugPrint(ringkasanData.toString());
       
       dashData.addAll(ringkasanData);
     } catch (e) {
       // Menampilkan error jika API ringkasan bermasalah
-      print('=== ERROR API RINGKASAN ===');
-      print(e.toString());
+      debugPrint('=== ERROR API RINGKASAN ===');
+      debugPrint(e.toString());
     }
 
     try {
@@ -32,14 +33,14 @@ class DashboardService {
       final statData = statRes['data'] as Map<String, dynamic>;
       
       // Melacak data dari statistik (Grafik, Donut Chart, Aktivitas)
-      print('=== JSON STATISTIK ===');
-      print(statData);
+      debugPrint('=== JSON STATISTIK ===');
+      debugPrint(statData.toString());
       
       dashData.addAll(statData);
     } catch (e) {
       // Menampilkan error jika API statistik bermasalah
-      print('=== ERROR API STATISTIK ===');
-      print(e.toString());
+      debugPrint('=== ERROR API STATISTIK ===');
+      debugPrint(e.toString());
     }
 
     return DashboardModel.fromJson(dashData);

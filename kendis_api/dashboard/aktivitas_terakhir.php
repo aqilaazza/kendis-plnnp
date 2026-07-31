@@ -42,7 +42,7 @@ if (empty($trips)) {
          LEFT JOIN kendaraan k ON k.id = p.id_kendaraan
          WHERE p.id_driver = :uid
            AND r.status IN ('completed', 'rated', 'on_trip')
-         ORDER BY p.updated_at DESC
+         ORDER BY p.created_at DESC
          LIMIT 10"
     );
     $stmt->execute(['uid' => $user['id']]);

@@ -10,6 +10,13 @@ $uid = $user['id'];
 // ============================================================
 // 1. COST PERIODE — 6 bulan terakhir
 // ============================================================
+$monthsIndo = [
+    'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mar',
+    'Apr' => 'Apr', 'May' => 'Mei', 'Jun' => 'Jun',
+    'Jul' => 'Jul', 'Aug' => 'Agu', 'Sep' => 'Sep',
+    'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Des',
+];
+
 $costPeriode = [];
 $now = new DateTime('first day of this month');
 for ($i = 5; $i >= 0; $i--) {
@@ -34,7 +41,7 @@ for ($i = 5; $i >= 0; $i--) {
 
     $costPeriode[] = [
         'bulan' => $bulan,
-        'label' => "$enMonth $year",
+        'label' => ($monthsIndo[$enMonth] ?? $enMonth) . ' ' . $year,
         'bbm' => (float) $row['bbm'],
         'parkir' => (float) $row['parkir'],
         'tol' => (float) $row['tol'],
