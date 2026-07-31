@@ -1,19 +1,16 @@
 <?php
-
-// Izinkan semua origin (untuk development)
+// Mengizinkan akses koneksi dari mana saja
 header("Access-Control-Allow-Origin: *");
 
-// Method yang diizinkan
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+// Mengizinkan metode request yang dipakai oleh aplikasi Flutter
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
 
-// Header yang diizinkan
-header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization, Ngrok-Skip-Browser-Warning");
+// PENTING: Mengizinkan header khusus dari Flutter & Ngrok
+header("Access-Control-Allow-Headers: Content-Type, Authorization, ngrok-skip-browser-warning");
 
-// Pastikan response selalu JSON
-header("Content-Type: application/json; charset=utf-8");
-
-// Tangani preflight request (OPTIONS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+// Menjawab otomatis "pertanyaan izin" (Preflight OPTIONS) dari browser Chrome
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+?>
