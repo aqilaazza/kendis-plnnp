@@ -7,9 +7,8 @@ requireDriverAuth();
 $pdo = getDbConnection();
 
 $stmt = $pdo->query(
-    "SELECT id, nopol, merk, warna, foto
+    "SELECT id, nopol, merk, warna, foto, status
      FROM kendaraan
-     WHERE status = 'tersedia'
      ORDER BY nopol ASC"
 );
 $list = $stmt->fetchAll();

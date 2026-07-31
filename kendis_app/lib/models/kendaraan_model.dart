@@ -4,6 +4,7 @@ class KendaraanModel {
   final String? merk;
   final String? warna;
   final String? foto;
+  final String? status;
 
   KendaraanModel({
     required this.id,
@@ -11,6 +12,7 @@ class KendaraanModel {
     this.merk,
     this.warna,
     this.foto,
+    this.status,
   });
 
   factory KendaraanModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class KendaraanModel {
       merk: json['merk'],
       warna: json['warna'],
       foto: json['foto'],
+      status: json['status'],
     );
   }
 }
