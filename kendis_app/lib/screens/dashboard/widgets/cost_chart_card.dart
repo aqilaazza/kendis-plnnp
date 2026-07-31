@@ -96,15 +96,22 @@ class _Chart extends StatelessWidget {
               borderData: FlBorderData(show: false),
               minY: 0,
               maxY: _maxY,
+              // Kunci sumbu X: 1 tick per titik data, mencegah label
+              // bulan/tahun terduplikasi akibat auto-interval fl_chart.
+              minX: 0,
+              maxX: (categories.length - 1).toDouble(),
               titlesData: FlTitlesData(
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 28,
+                    interval: 1,
                     getTitlesWidget: (value, meta) {
-                      final idx = value.toInt();
+                      final idx = value.round();
                       if (idx < 0 || idx >= categories.length) return const SizedBox.shrink();
-                      
+                      // Hindari render dobel akibat pembulatan titik non-integer
+                      if ((value - idx).abs() > 0.01) return const SizedBox.shrink();
+
                       // Label bulan dari backend sudah berisi bulan + tahun
                       // (misal: "Jul 2026"), jadi cukup tampilkan apa adanya.
                       return Padding(

@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/app_theme.dart';
 import '../../../models/dashboard_model.dart';
-import '../../laporan/laporan_screen.dart';
+import '../../../services/nav_controller.dart'; // sesuaikan path sesuai lokasi file di project kamu
 
 class BiayaCard extends StatelessWidget {
   final DashboardModel? data;
   final bool isLoading;
 
   const BiayaCard({super.key, this.data, required this.isLoading});
+
+  // Index tab "Laporan" di MainNavScreen (lihat _screens di main_nav_screen.dart)
+  static const int _laporanTabIndex = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -152,12 +155,13 @@ class BiayaCard extends StatelessWidget {
                           ),
                         const Spacer(),
                         ElevatedButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LaporanScreen(),
-                            ),
-                          ),
+                          // FIX: sebelumnya Navigator.push ke LaporanScreen
+                          // sebagai halaman baru (bottom nav hilang, tidak
+                          // ada tombol kembali). Sekarang cukup pindah tab
+                          // lewat NavController, IndexedStack di
+                          // MainNavScreen yang urus tampilannya, bottom nav
+                          // tetap ada.
+                          onPressed: () => NavController.instance.goTo(_laporanTabIndex),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,

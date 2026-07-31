@@ -50,15 +50,23 @@ for ($i = 5; $i >= 0; $i--) {
 
 // ============================================================
 // 2. TUJUAN TERPOPULER — 5 kota terbanyak
+// ------------------------------------------------------------
+// FIX: tempat_tujuan tersimpan sebagai "KOTA - Detail Tempat"
+// (mis. "SURABAYA - Kantor Pusat", "SURABAYA - Kantor PLN SBY").
+// Group by string lengkap membuat tiap detail dihitung sebagai
+// "kota" terpisah, padahal seharusnya digabung per kota saja.
+// Ambil bagian sebelum " - " lalu group by itu.
 // ============================================================
 $stmt = $pdo->prepare(
-    "SELECT r.tempat_tujuan AS kota, COUNT(*) AS jumlah_trip
+    "SELECT
+        TRIM(SUBSTRING_INDEX(r.tempat_tujuan, ' - ', 1)) AS kota,
+        COUNT(*) AS jumlah_trip
      FROM penugasan p
      JOIN request_kendis r ON r.id = p.id_request
      WHERE p.id_driver = :uid
        AND r.tempat_tujuan IS NOT NULL
        AND r.tempat_tujuan != ''
-     GROUP BY r.tempat_tujuan
+     GROUP BY TRIM(SUBSTRING_INDEX(r.tempat_tujuan, ' - ', 1))
      ORDER BY jumlah_trip DESC
      LIMIT 5"
 );
