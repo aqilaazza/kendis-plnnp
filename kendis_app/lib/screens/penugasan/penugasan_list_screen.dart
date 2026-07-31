@@ -42,6 +42,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     // PENTING: Dibungkus dengan Scaffold agar TextField dan Material Widget lainnya tidak error
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -343,15 +344,245 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                 },
                               ),
                             ],
+=======
+    return SafeArea(
+      child: Container(
+        width: double.infinity,
+        color: AppColors.background,
+        child: Column(
+          children: [
+            /// HEADER
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.shade200,
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  /// Judul - Notifikasi
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Riwayat Penugasan",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+>>>>>>> 97eb2012588b12d01b5022e072045cd3554e0218
                           ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          size: 30,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
                   ),
+<<<<<<< HEAD
                 ),
               ),
             ],
           ),
+=======
+
+                  const SizedBox(height: 6),
+
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Daftar penugasan yang telah terkirim.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 100),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+
+                    /// ================= FILTER (waktu) =================
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            FutureBuilder<int>(
+                              future: _aktifCountFuture,
+                              builder: (context, snap) {
+                                return _FilterChip(
+                                  label: 'Aktif',
+                                  value: 'aktif',
+                                  selected: _filter,
+                                  onTap: _setFilter,
+                                  count: snap.data,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: 'Semua',
+                              value: 'semua',
+                              selected: _filter,
+                              onTap: _setFilter,
+                            ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: 'Selesai',
+                              value: 'selesai',
+                              selected: _filter,
+                              onTap: _setFilter,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// ================= SEARCH =================
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: "Cari laporan...",
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F7FA),
+                          prefixIconColor: Colors.grey,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// ================= LIST =================
+                    FutureBuilder<List<PenugasanModel>>(
+                      future: _future,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(child: Text('Gagal memuat: ${snapshot.error}')),
+                          );
+                        }
+                        final list = snapshot.data ?? [];
+                        if (list.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: Text(
+                                'Belum ada penugasan.',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                            ),
+                          );
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            children: [
+                              for (final p in list) _PenugasanTile(penugasan: p),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                    /// ================= RINGKASAN BULAN INI =================
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "RINGKASAN BULAN INI",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: .5,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            FutureBuilder<Map<String, dynamic>>(
+                              future: _ringkasanFuture,
+                              builder: (context, snap) {
+                                final r = snap.data;
+                                final jumlahLaporan = r?['jumlah_laporan']?.toString() ?? '-';
+                                final totalKm = r?['total_km']?.toString() ?? '-';
+                                final totalRupiah = r?['total_rupiah'];
+                                final totalRpLabel = totalRupiah == null
+                                    ? '-'
+                                    : totalRupiah >= 1000000
+                                        ? '${(totalRupiah / 1000000).toStringAsFixed(1)}jt'
+                                        : '${(totalRupiah / 1000).round()}rb';
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _SummaryStat(value: jumlahLaporan, label: "LAPORAN"),
+                                    _SummaryStat(value: totalKm, label: "KM JARAK"),
+                                    _SummaryStat(value: totalRpLabel, label: "TOTAL RP"),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+>>>>>>> 97eb2012588b12d01b5022e072045cd3554e0218
         ),
       ),
     );
