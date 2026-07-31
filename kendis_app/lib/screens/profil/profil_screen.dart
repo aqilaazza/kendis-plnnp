@@ -189,7 +189,7 @@ class ProfilScreen extends StatelessWidget {
                       },
                     ),
                     _MenuTile(
-                      icon: Icons.notifications_none_outlined,
+                      icon: Icons.tune_outlined,
                       label: 'Pengaturan Notifikasi',
                       onTap: () => Navigator.push(
                         context,
