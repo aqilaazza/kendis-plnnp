@@ -186,9 +186,12 @@ class _KendaraanCard extends StatelessWidget {
   /// Foto disajikan lewat endpoint file.php di kendis_api sendiri (bukan
   /// ditebak path fisiknya) — supaya tetap benar walau lokasi folder
   /// uploads di server beda dari lokal, atau pas pindah hosting nanti.
+  /// NOTE: file.php ada di kendis_api/penugasan/file.php (bukan di root
+  /// kendis_api), jadi URL-nya WAJIB menyertakan segmen /penugasan/ —
+  /// kalau tidak, request 404 sebelum sempat sampai ke file.php sama sekali.
   static String _fotoUrl(String foto) {
     if (foto.startsWith('http')) return foto;
-    return '${AppConfig.baseUrl}/file.php?path=${Uri.encodeComponent(foto)}';
+    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(foto)}';
   }
 
   @override

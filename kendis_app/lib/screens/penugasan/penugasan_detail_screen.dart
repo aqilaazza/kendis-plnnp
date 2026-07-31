@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
 import '../../core/api_client.dart';
+import '../../config/app_config.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
 import '../../services/badge_notifier.dart';
@@ -61,6 +63,36 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
       }
     } else {
       await _mulaiPerjalanan();
+    }
+  }
+
+  /// Surat penugasan diupload lewat website Kendis (asman), disimpan sebagai
+  /// path relatif dari root folder uploads yang sama dengan foto kendaraan
+  /// (lihat pilih_kendaraan_screen.dart). Dibuka lewat endpoint file.php
+  /// milik kendis_api sendiri, bukan ditebak path fisiknya langsung, supaya
+  /// tetap benar walau lokasi folder uploads di server beda.
+  /// NOTE: file.php ada di kendis_api/penugasan/file.php (bukan di root
+  /// kendis_api), jadi URL-nya WAJIB menyertakan segmen /penugasan/ —
+  /// kalau tidak, request 404 sebelum sempat sampai ke file.php sama sekali.
+  static String _fileUrl(String path) {
+    if (path.startsWith('http')) return path;
+    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(path)}';
+  }
+
+  Future<void> _lihatSuratPenugasan(String suratPenugasan) async {
+    final url = Uri.parse(_fileUrl(suratPenugasan));
+    try {
+      final ok = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak ada aplikasi untuk membuka file ini'), backgroundColor: AppColors.danger),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuka file: $e'), backgroundColor: AppColors.danger),
+      );
     }
   }
 
@@ -277,10 +309,7 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                                           style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
                                       const SizedBox(height: 6),
                                       OutlinedButton.icon(
-                                        // TODO: tambahkan package url_launcher lalu buka
-                                        // `suratPenugasan` sebagai URL, atau arahkan ke
-                                        // viewer PDF internal kalau berupa file lokal.
-                                        onPressed: () {},
+                                        onPressed: () => _lihatSuratPenugasan(suratPenugasan),
                                         icon: const Icon(Icons.description_outlined, size: 16),
                                         label: const Text("Lihat File"),
                                         style: OutlinedButton.styleFrom(

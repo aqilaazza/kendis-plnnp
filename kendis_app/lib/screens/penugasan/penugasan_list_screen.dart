@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
@@ -21,337 +22,303 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   late Future<Map<String, dynamic>> _ringkasanFuture;
   late Future<int> _aktifCountFuture;
 
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
-    _future = PenugasanService.getList(status: _filter);
-    // getRingkasan() sekarang sudah ada di PenugasanService (menyambung ke
-    // endpoint ringkasan.php yang baru).
+    _loadAll();
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Load ulang list (sesuai filter+search aktif), ringkasan bulan ini, dan
+  /// badge count "Aktif" — dipanggil dari initState, RefreshIndicator, ganti
+  /// filter, maupun search.
+  void _loadAll() {
+    _future = PenugasanService.getList(status: _filter, search: _searchCtrl.text);
     _ringkasanFuture = PenugasanService.getRingkasan();
     // Jumlah data untuk badge chip "Aktif" — diambil terpisah supaya angkanya
     // tetap tampil walaupun user sedang berada di filter Semua/Selesai.
+    // Sengaja tidak ikut search, biar badge selalu menunjukkan total aktif.
     _aktifCountFuture = PenugasanService.getList(status: 'aktif').then((l) => l.length);
+  }
+
+  /// Dipanggil oleh RefreshIndicator (tarik ke bawah untuk refresh).
+  Future<void> _onRefresh() async {
+    setState(_loadAll);
+    await _future;
+  }
+
+  void _onSearchChanged() {
+    // Debounce 400ms supaya tidak nembak API tiap kali user mengetik satu
+    // huruf — request baru dikirim setelah user berhenti mengetik sejenak.
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() {
+        _future = PenugasanService.getList(status: _filter, search: _searchCtrl.text);
+      });
+    });
   }
 
   void _setFilter(String filter) {
     setState(() {
       _filter = filter;
-      _future = PenugasanService.getList(status: filter);
+      _future = PenugasanService.getList(status: filter, search: _searchCtrl.text);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // PENTING: Dibungkus dengan Scaffold agar TextField dan Material Widget lainnya tidak error
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Container(
-          width: double.infinity,
-          color: AppColors.background,
-          child: Column(
-            children: [
-              /// HEADER
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                color: Colors.white,
-                child: Column(
+    return SafeArea(
+      child: Container(
+        width: double.infinity,
+        color: AppColors.background,
+        child: Column(
+          children: [
+            /// HEADER
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.shade200,
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  /// Judul - Notifikasi
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Riwayat Penugasan",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          size: 30,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Daftar penugasan yang telah terkirim.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 100),
+                  child: Column(
                   children: [
-                    /// Judul - Notifikasi
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            "Riwayat Penugasan",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                    const SizedBox(height: 16),
+
+                    /// ================= FILTER (waktu) =================
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            FutureBuilder<int>(
+                              future: _aktifCountFuture,
+                              builder: (context, snap) {
+                                return _FilterChip(
+                                  label: 'Aktif',
+                                  value: 'aktif',
+                                  selected: _filter,
+                                  onTap: _setFilter,
+                                  count: snap.data,
+                                );
+                              },
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: 'Semua',
+                              value: 'semua',
+                              selected: _filter,
+                              onTap: _setFilter,
+                            ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: 'Selesai',
+                              value: 'selesai',
+                              selected: _filter,
+                              onTap: _setFilter,
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Membuka Notifikasi...'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                          icon: const Icon(
-                            Icons.notifications_none_rounded,
-                            size: 30,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 16),
 
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Daftar penugasan yang telah terkirim.",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textMuted,
+                    /// ================= SEARCH =================
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: "Cari laporan...",
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchCtrl.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () => _searchCtrl.clear(),
+                                ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F7FA),
+                          prefixIconColor: Colors.grey,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// ================= LIST =================
+                    FutureBuilder<List<PenugasanModel>>(
+                      future: _future,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(child: Text('Gagal memuat: ${snapshot.error}')),
+                          );
+                        }
+                        final list = snapshot.data ?? [];
+                        if (list.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: Text(
+                                'Belum ada penugasan.',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                            ),
+                          );
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            children: [
+                              for (final p in list) _PenugasanTile(penugasan: p),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                    /// ================= RINGKASAN BULAN INI =================
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "RINGKASAN BULAN INI",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: .5,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            FutureBuilder<Map<String, dynamic>>(
+                              future: _ringkasanFuture,
+                              builder: (context, snap) {
+                                final r = snap.data;
+                                final jumlahLaporan = r?['jumlah_laporan']?.toString() ?? '-';
+                                final totalKm = r?['total_km']?.toString() ?? '-';
+                                final totalRupiah = r?['total_rupiah'];
+                                final totalRpLabel = totalRupiah == null
+                                    ? '-'
+                                    : totalRupiah >= 1000000
+                                        ? '${(totalRupiah / 1000000).toStringAsFixed(1)}jt'
+                                        : '${(totalRupiah / 1000).round()}rb';
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _SummaryStat(value: jumlahLaporan, label: "LAPORAN"),
+                                    _SummaryStat(value: totalKm, label: "KM JARAK"),
+                                    _SummaryStat(value: totalRpLabel, label: "TOTAL RP"),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-
-                      /// ================= BANNER (image + overlay) =================
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: SizedBox(
-                            height: 150,
-                            width: double.infinity,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                // Ganti path asset sesuai gambar armada yang tersedia.
-                                Image.asset(
-                                  'assets/images/penugasan_screen.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stack) => Container(
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.black.withOpacity(.15),
-                                        Colors.black.withOpacity(.75),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: const [
-                                      Text(
-                                        "PLN NUSANTARA POWER UP PAITON",
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: .5,
-                                        ),
-                                      ),
-                                      SizedBox(height: 6),
-                                      Text(
-                                        "Kualitas Armada Nomor Satu",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                      SizedBox(height: 6),
-                                      Text(
-                                        "Mendukung operasional pembangkit listrik dengan armada kendaraan yang...",
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      /// ================= FILTER (waktu) =================
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              FutureBuilder<int>(
-                                future: _aktifCountFuture,
-                                builder: (context, snap) {
-                                  return _FilterChip(
-                                    label: 'Aktif',
-                                    value: 'aktif',
-                                    selected: _filter,
-                                    onTap: _setFilter,
-                                    count: snap.data,
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              _FilterChip(
-                                label: 'Semua',
-                                value: 'semua',
-                                selected: _filter,
-                                onTap: _setFilter,
-                              ),
-                              const SizedBox(width: 8),
-                              _FilterChip(
-                                label: 'Selesai',
-                                value: 'selesai',
-                                selected: _filter,
-                                onTap: _setFilter,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      /// ================= SEARCH =================
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: "Cari laporan...",
-                            prefixIcon: const Icon(Icons.search),
-                            filled: true,
-                            fillColor: const Color(0xFFF5F7FA),
-                            prefixIconColor: Colors.grey,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      /// ================= LIST =================
-                      FutureBuilder<List<PenugasanModel>>(
-                        future: _future,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          }
-                          if (snapshot.hasError) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 40),
-                              child: Center(child: Text('Gagal memuat: ${snapshot.error}')),
-                            );
-                          }
-                          final list = snapshot.data ?? [];
-                          if (list.isEmpty) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 40),
-                              child: Center(
-                                child: Text(
-                                  'Belum ada penugasan.',
-                                  style: TextStyle(color: AppColors.textMuted),
-                                ),
-                              ),
-                            );
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              children: [
-                                for (final p in list) _PenugasanTile(penugasan: p),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-
-                      /// ================= RINGKASAN BULAN INI =================
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "RINGKASAN BULAN INI",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: .5,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              FutureBuilder<Map<String, dynamic>>(
-                                future: _ringkasanFuture,
-                                builder: (context, snap) {
-                                  final r = snap.data;
-                                  final jumlahLaporan = r?['jumlah_laporan']?.toString() ?? '-';
-                                  final totalKm = r?['total_km']?.toString() ?? '-';
-                                  final totalRupiah = r?['total_rupiah'];
-                                  final totalRpLabel = totalRupiah == null
-                                      ? '-'
-                                      : totalRupiah >= 1000000
-                                          ? '${(totalRupiah / 1000000).toStringAsFixed(1)}jt'
-                                          : '${(totalRupiah / 1000).round()}rb';
-                                  return Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _SummaryStat(value: jumlahLaporan, label: "LAPORAN"),
-                                      _SummaryStat(value: totalKm, label: "KM JARAK"),
-                                      _SummaryStat(value: totalRpLabel, label: "TOTAL RP"),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
