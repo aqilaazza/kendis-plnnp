@@ -1,129 +1,172 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
+import '../models/penugasan_menunggu_model.dart';
+
+const _kTeal = Color(0xFF0B5563);
+const _kCardBg = Color(0xFFF3F6F7);
+const _kTextGray = Color(0xFF6B7280);
+const _kUrgentText = Color(0xFF8B7B2E);
 
 class PenugasanNotificationSheet {
   PenugasanNotificationSheet._();
 
+  /// Tampilkan bottom sheet notifikasi penugasan baru.
+  ///
+  /// [onAccept] dipanggil saat tombol "Terima Tugas" ditekan.
+  /// Fungsi ini harus mengembalikan true jika sukses, false jika gagal
+  /// (sheet akan tetap terbuka dan menampilkan error).
+  ///
+  /// Solusi sementara: konfirmasi hanya disimpan lokal di SharedPreferences
+  /// sampai ada kolom konfirmasi driver di database.
   static Future<void> show({
     required BuildContext context,
-    required String kodeRequest,
-    required bool isUrgent,
-    required String titikJemput,
-    required String tujuanAkhir,
-    required String jadwal,
-    VoidCallback? onAccept,
-    VoidCallback? onDismiss,
+    required PenugasanMenungguModel penugasan,
+    required Future<bool> Function() onAccept,
   }) async {
-    final result = await showModalBottomSheet<bool>(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      enableDrag: true,
-      isDismissible: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (_) => _PenugasanSheetContent(
-        kodeRequest: kodeRequest,
-        isUrgent: isUrgent,
-        titikJemput: titikJemput,
-        tujuanAkhir: tujuanAkhir,
-        jadwal: jadwal,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: .4),
+      builder: (_) => _SheetContent(
+        penugasan: penugasan,
+        onAccept: onAccept,
       ),
     );
-    if (result == true) {
-      onAccept?.call();
-    } else {
-      onDismiss?.call();
-    }
+  }
+
+  static String formatJadwal(DateTime? dt) {
+    if (dt == null) return '-';
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    ];
+    return '${dt.day} ${months[dt.month]}, '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 
-class _PenugasanSheetContent extends StatelessWidget {
-  const _PenugasanSheetContent({
-    required this.kodeRequest,
-    required this.isUrgent,
-    required this.titikJemput,
-    required this.tujuanAkhir,
-    required this.jadwal,
+class _SheetContent extends StatefulWidget {
+  final PenugasanMenungguModel penugasan;
+  final Future<bool> Function() onAccept;
+
+  const _SheetContent({
+    required this.penugasan,
+    required this.onAccept,
   });
 
-  final String kodeRequest;
-  final bool isUrgent;
-  final String titikJemput;
-  final String tujuanAkhir;
-  final String jadwal;
+  @override
+  State<_SheetContent> createState() => _SheetContentState();
+}
+
+class _SheetContentState extends State<_SheetContent> {
+  bool _isAccepting = false;
+  String? _errorMessage;
+
+  Future<void> _handleAccept() async {
+    setState(() {
+      _isAccepting = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final success = await widget.onAccept();
+      if (!mounted) return;
+      if (success) {
+        Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _isAccepting = false;
+          _errorMessage = 'Terjadi kesalahan. Silakan coba lagi.';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAccepting = false;
+        _errorMessage = 'Terjadi kesalahan. Silakan coba lagi.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final maxH = MediaQuery.of(context).size.height * 0.75;
 
     return SafeArea(
-      child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        padding: EdgeInsets.only(bottom: bottomInset + 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DragHandle(),
-            const SizedBox(height: 8),
-            _HeaderIcon(),
-            const SizedBox(height: 16),
-            Text(
-              'Penugasan Baru!',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Segera konfirmasi kesediaan Anda',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textBody,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _InfoCard(
-                kodeRequest: kodeRequest,
-                isUrgent: isUrgent,
-                titikJemput: titikJemput,
-                tujuanAkhir: tujuanAkhir,
-                jadwal: jadwal,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    child: const Text('Terima Tugas'),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottom + 8),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxH),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: _buildContent(),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final p = widget.penugasan;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _DragHandle(),
+          const SizedBox(height: 20),
+          _HeaderIcon(),
+          const SizedBox(height: 16),
+          Text(
+            'Penugasan Baru!',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _kTeal,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Segera konfirmasi ketersediaan Anda',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: _kTextGray,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _InfoCard(
+            kodeRequest: p.kodeRequest,
+            isUrgent: p.isUrgent,
+            lokasiTujuan: p.lokasiTujuan,
+            tempatTujuan: p.tempatTujuan,
+            jadwalFormatted: PenugasanNotificationSheet.formatJadwal(p.jadwal),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: AppColors.danger, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          const SizedBox(height: 20),
+          _AcceptButton(
+            isAccepting: _isAccepting,
+            onPressed: _isAccepting ? null : _handleAccept,
+          ),
+        ],
       ),
     );
   }
@@ -132,13 +175,12 @@ class _PenugasanSheetContent extends StatelessWidget {
 class _DragHandle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 4),
+    return Center(
       child: Container(
         width: 40,
         height: 4,
         decoration: BoxDecoration(
-          color: AppColors.textPlaceholder.withValues(alpha: .6),
+          color: _kTeal.withValues(alpha: .6),
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -150,136 +192,101 @@ class _HeaderIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 64,
-      height: 64,
+      width: 72,
+      height: 72,
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        color: const Color(0xFFE8EEF2),
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        border: Border.all(
+          color: _kTeal.withValues(alpha: .15),
+          width: 1.5,
+        ),
       ),
       child: const Icon(
-        Icons.work_outline,
-        color: Colors.white,
-        size: 30,
+        Icons.assignment_outlined,
+        color: _kTeal,
+        size: 32,
       ),
     );
   }
 }
 
 class _InfoCard extends StatelessWidget {
+  final String kodeRequest;
+  final bool isUrgent;
+  final String lokasiTujuan;
+  final String tempatTujuan;
+  final String jadwalFormatted;
+
   const _InfoCard({
     required this.kodeRequest,
     required this.isUrgent,
-    required this.titikJemput,
-    required this.tujuanAkhir,
-    required this.jadwal,
+    required this.lokasiTujuan,
+    required this.tempatTujuan,
+    required this.jadwalFormatted,
   });
-
-  final String kodeRequest;
-  final bool isUrgent;
-  final String titikJemput;
-  final String tujuanAkhir;
-  final String jadwal;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark
-            ? Theme.of(context).colorScheme.surfaceContainerHighest
-            : Colors.white,
+        color: _kCardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: .08)
-              : Colors.black.withValues(alpha: .06),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _RequestHeader(kodeRequest: kodeRequest, isUrgent: isUrgent),
-          const SizedBox(height: 16),
-          _Timeline(
-            items: [
-              _TimelineData(
-                icon: Icons.near_me_outlined,
-                label: 'Titik Jemput',
-                value: titikJemput,
-              ),
-              _TimelineData(
-                icon: Icons.location_on_outlined,
-                label: 'Tujuan Akhir',
-                value: tujuanAkhir,
-              ),
-              _TimelineData(
-                icon: Icons.schedule_outlined,
-                label: 'Jadwal',
-                value: jadwal,
-              ),
-            ],
+          _buildRequestHeader(),
+          const SizedBox(height: 4),
+          Text(
+            kodeRequest,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
           ),
+          const SizedBox(height: 16),
+          _TimelineSection(
+            lokasiTujuan: lokasiTujuan,
+            tempatTujuan: tempatTujuan,
+          ),
+          const SizedBox(height: 12),
+          _JadwalRow(jadwal: jadwalFormatted),
         ],
       ),
     );
   }
-}
 
-class _RequestHeader extends StatelessWidget {
-  const _RequestHeader({
-    required this.kodeRequest,
-    required this.isUrgent,
-  });
-
-  final String kodeRequest;
-  final bool isUrgent;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildRequestHeader() {
     return Row(
       children: [
-        Expanded(
-          child: Text(
-            'Kode Request',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
-              letterSpacing: .8,
-            ),
+        Text(
+          'KODE REQUEST',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: _kTextGray,
+            letterSpacing: 1.2,
           ),
         ),
+        const Spacer(),
         if (isUrgent)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.danger.withValues(alpha: .12),
+              color: Color(0xFFFEF3C7),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(
+            child: const Text(
               'URGENT',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: AppColors.danger,
-                letterSpacing: .6,
+                color: _kUrgentText,
+                letterSpacing: 0.6,
               ),
             ),
           ),
@@ -288,54 +295,14 @@ class _RequestHeader extends StatelessWidget {
   }
 }
 
-class _TimelineData {
-  final IconData icon;
-  final String label;
-  final String value;
+class _TimelineSection extends StatelessWidget {
+  final String lokasiTujuan;
+  final String tempatTujuan;
 
-  const _TimelineData({
-    required this.icon,
-    required this.label,
-    required this.value,
+  const _TimelineSection({
+    required this.lokasiTujuan,
+    required this.tempatTujuan,
   });
-}
-
-class _Timeline extends StatelessWidget {
-  const _Timeline({required this.items});
-
-  final List<_TimelineData> items;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      children: List.generate(items.length * 2 - 1, (i) {
-        if (i.isOdd) {
-          return Padding(
-            padding: const EdgeInsets.only(left: 14),
-            child: SizedBox(
-              height: 22,
-              child: VerticalDivider(
-                width: 2,
-                thickness: 1.5,
-                color: AppColors.primary.withValues(alpha: .35),
-              ),
-            ),
-          );
-        }
-        final idx = i ~/ 2;
-        return _TimelineRow(data: items[idx], isLast: idx == items.length - 1);
-      }),
-    );
-  }
-}
-
-class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({required this.data, required this.isLast});
-
-  final _TimelineData data;
-  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -345,59 +312,217 @@ class _TimelineRow extends StatelessWidget {
         children: [
           Column(
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: .1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  data.icon,
-                  size: 14,
-                  color: AppColors.primary,
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: VerticalDivider(
-                    width: 2,
-                    thickness: 1.5,
-                    color: AppColors.primary.withValues(alpha: .2),
+              _TimelineDot(filled: true),
+              Expanded(
+                child: SizedBox(
+                  width: 2,
+                  child: CustomPaint(
+                    painter: _DashedLinePainter(
+                      color: _kTextGray.withValues(alpha: .35),
+                    ),
                   ),
                 ),
+              ),
+              _TimelineDot(filled: false),
             ],
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: isLast ? 0 : 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _TimelineRow(
+                  label: 'Lokasi Tujuan',
+                  value: lokasiTujuan.isNotEmpty ? lokasiTujuan : tempatTujuan,
+                ),
+                const SizedBox(height: 24),
+                _TimelineRow(
+                  label: 'Tujuan Akhir',
+                  value: tempatTujuan,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineDot extends StatelessWidget {
+  final bool filled;
+
+  const _TimelineDot({required this.filled});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: filled ? _kTeal : Colors.transparent,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: _kTeal,
+          width: 2,
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+
+  _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    const dashWidth = 5.0;
+    const dashSpace = 3.0;
+    double startY = 0;
+
+    while (startY < size.height) {
+      canvas.drawLine(
+        Offset(size.width / 2, startY),
+        Offset(size.width / 2, (startY + dashWidth).clamp(0, size.height)),
+        paint,
+      );
+      startY += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _TimelineRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _TimelineRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: _kTextGray,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1F2937),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _JadwalRow extends StatelessWidget {
+  final String jadwal;
+
+  const _JadwalRow({required this.jadwal});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.calendar_today, size: 16, color: _kTeal),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'JADWAL',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: _kTextGray,
+                letterSpacing: 1.2,
+              ),
+            ),
+            Text(
+              jadwal,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AcceptButton extends StatelessWidget {
+  final bool isAccepting;
+  final VoidCallback? onPressed;
+
+  const _AcceptButton({
+    required this.isAccepting,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kTeal,
+          disabledBackgroundColor: _kTeal.withValues(alpha: .6),
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white70,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: isAccepting
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(Icons.check_circle_outline, size: 20),
+                  SizedBox(width: 8),
                   Text(
-                    data.label,
+                    'Terima Tugas',
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textMuted,
-                      letterSpacing: .6,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    data.value,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
       ),
     );
   }

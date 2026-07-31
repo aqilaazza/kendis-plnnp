@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/penugasan_menunggu_provider.dart';
+import '../../widgets/penugasan_notification_sheet.dart';
 import 'widgets/aktivitas_card.dart';
 import 'widgets/biaya_card.dart';
 import 'widgets/cost_chart_card.dart';
@@ -19,6 +21,9 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final _provider = DashboardProvider();
+  final _penugasanMenungguProvider = PenugasanMenungguProvider();
+  bool _isCheckingNotif = false;
+  bool _isShowingPopup = false;
 
   @override
   void initState() {
@@ -30,12 +35,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _provider.removeListener(_onChanged);
-    _provider.dispose();
+    _penugasanMenungguProvider.dispose();
     super.dispose();
   }
 
   void _onChanged() {
     if (mounted) setState(() {});
+    if (_provider.state == DashboardLoadState.loaded) {
+      _checkPenugasanMenunggu();
+    }
+  }
+
+  Future<void> _checkPenugasanMenunggu() async {
+    if (_isCheckingNotif) return;
+    _isCheckingNotif = true;
+    try {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user == null) return;
+      await _penugasanMenungguProvider.load(driverId: user.id);
+      if (mounted) _tryShowPopup();
+    } finally {
+      _isCheckingNotif = false;
+    }
+  }
+
+  void _tryShowPopup() {
+    if (_isShowingPopup) return;
+    final p = _penugasanMenungguProvider.penugasanPrioritas;
+    if (p == null) return;
+    if (_penugasanMenungguProvider.isEverShown(p.id)) return;
+    if (_penugasanMenungguProvider.isConfirmed(p.id)) return;
+
+    _isShowingPopup = true;
+    _penugasanMenungguProvider.markShown(p.id);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      PenugasanNotificationSheet.show(
+        context: context,
+        penugasan: p,
+        onAccept: () async {
+          await _penugasanMenungguProvider.terimaTugas(p.id);
+          _provider.refresh();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tugas berhasil diterima'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+          return true;
+        },
+      ).whenComplete(() {
+        _isShowingPopup = false;
+      });
+    });
   }
 
   @override
@@ -60,7 +115,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final data = _provider.data;
     final isLoading = state == DashboardLoadState.loading || state == DashboardLoadState.initial;
 
-    if (state == DashboardLoadState.error) {
+    // Tampilkan indikator loading saat pertama kali memuat data
+    if (isLoading && data == null) {
+          return ListView(
+        children: const [
+          SizedBox(height: 60),
+          Center(
+            child: CircularProgressIndicator(),
+          ),
+        ],
+      );
+    }
+
+    // Tampilkan error jika gagal memuat data (tidak ada fallback dummy)
+    if (state == DashboardLoadState.error && data == null) {
       return ListView(
         children: [
           const SizedBox(height: 60),
@@ -71,9 +139,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Icon(Icons.cloud_off, size: 56, color: Colors.grey.shade400),
                   const SizedBox(height: 16),
-                  Text(_provider.errorMessage ?? 'Terjadi kesalahan',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textBody, fontSize: 14)),
+                  Text(
+                    _provider.errorMessage ?? 'Terjadi kesalahan',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textBody, fontSize: 14),
+                  ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _provider.refresh,
@@ -89,6 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    // Tampilkan dashboard dengan data dari API (atau fallback dummy)
     return ListView(
       padding: const EdgeInsets.only(bottom: 100),
       children: [

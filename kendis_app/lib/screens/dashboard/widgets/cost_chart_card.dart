@@ -25,10 +25,11 @@ class CostChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cost Periode', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          const Text('Cost Periode', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           const SizedBox(height: 2),
-          Text('Pengeluaran BBM, tol, dan parkir', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const Text('Pengeluaran BBM, tol, dan parkir', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           const SizedBox(height: 16),
+          // Logika untuk menampilkan data ASLI saja
           if (isLoading)
             Container(height: 180, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)))
           else if (categories != null && categories.isNotEmpty)
@@ -86,8 +87,15 @@ class _Chart extends StatelessWidget {
           height: 180,
           child: LineChart(
             LineChartData(
-              gridData: const FlGridData(show: false),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 500000,
+                getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+              ),
               borderData: FlBorderData(show: false),
+              minY: 0,
+              maxY: _maxY,
               titlesData: FlTitlesData(
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
@@ -96,10 +104,12 @@ class _Chart extends StatelessWidget {
                     getTitlesWidget: (value, meta) {
                       final idx = value.toInt();
                       if (idx < 0 || idx >= categories.length) return const SizedBox.shrink();
+                      
+                      // Label bulan dari backend sudah berisi bulan + tahun
+                      // (misal: "Jul 2026"), jadi cukup tampilkan apa adanya.
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(categories[idx].label,
-                            style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                        child: Text(categories[idx].label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
                       );
                     },
                   ),
@@ -107,6 +117,23 @@ class _Chart extends StatelessWidget {
                 leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipItems: (touchedSpots) {
+                    return touchedSpots.map((spot) {
+                      final labels = ['BBM', 'Parkir', 'Tol'];
+                      final colors = [const Color(0xFF0B5563), const Color(0xFF1F9D8F), const Color(0xFFC9A227)];
+                      final barIdx = spot.barIndex;
+                      final label = barIdx < labels.length ? labels[barIdx] : '';
+                      final color = barIdx < colors.length ? colors[barIdx] : Colors.grey;
+                      return LineTooltipItem(
+                        '$label: Rp ${_formatRupiah(spot.y)}',
+                        TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+                      );
+                    }).toList();
+                  },
+                ),
               ),
               lineBarsData: [
                 _lineData(spotsBbm, const Color(0xFF0B5563)),
@@ -122,22 +149,30 @@ class _Chart extends StatelessWidget {
     );
   }
 
+  double get _maxY {
+    double max = 0;
+    for (final c in categories) {
+      if (c.bbm > max) max = c.bbm;
+      if (c.parkir > max) max = c.parkir;
+      if (c.tol > max) max = c.tol;
+    }
+    return max > 0 ? max * 1.2 : 1000000;
+  }
+
+  String _formatRupiah(double value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}jt';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(0)}rb';
+    return value.toStringAsFixed(0);
+  }
+
   LineChartBarData _lineData(List<FlSpot> spots, Color color) {
     return LineChartBarData(
       spots: spots,
       color: color,
-      barWidth: 2.5,
+      barWidth: 3,
       isCurved: true,
       curveSmoothness: 0.3,
-      dotData: FlDotData(
-        show: true,
-        getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-          radius: 3,
-          color: Colors.white,
-          strokeWidth: 2,
-          strokeColor: color,
-        ),
-      ),
+      dotData: const FlDotData(show: false),
       belowBarData: BarAreaData(show: true, color: color.withOpacity(0.08)),
     );
   }
@@ -164,7 +199,7 @@ class _Legend extends StatelessWidget {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
       ],
     );
   }

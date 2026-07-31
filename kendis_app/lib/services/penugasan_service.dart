@@ -1,3 +1,5 @@
+import 'package:kendis_driver_app/models/penugasan_menunggu_model.dart';
+
 import '../core/api_client.dart';
 import '../models/penugasan_model.dart';
 import '../models/kendaraan_model.dart';
@@ -54,5 +56,13 @@ class PenugasanService {
     final res = await ApiClient.get('/penugasan/pending_actions_count.php');
     final data = res['data'] as Map<String, dynamic>;
     return int.tryParse(data['perlu_pilih_kendaraan'].toString()) ?? 0;
+  }
+
+   static Future<List<PenugasanMenungguModel>> getMenungguKonfirmasi() async {
+    final res = await ApiClient.get('/penugasan/menunggu_konfirmasi.php');
+    final list = res['data'] as List;
+    return list
+        .map((e) => PenugasanMenungguModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

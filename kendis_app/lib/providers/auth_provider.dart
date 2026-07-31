@@ -17,10 +17,29 @@ class AuthProvider extends ChangeNotifier {
 
   bool isLoading = false;
 
+  /// Dipanggil sekali saat app start (lihat main.dart). Mengecek apakah
+  /// ada sesi tersimpan, dan jika ada, langsung ambil data profil user
+  /// sekalian sebelum status diubah menjadi loggedIn. Dengan begitu,
+  /// begitu SplashGate pindah ke MainNavScreen, currentUser sudah pasti
+  /// terisi (tidak ada momen menampilkan data kosong / '-').
   Future<void> checkLoginStatus() async {
     final loggedIn = await AuthService.isLoggedIn();
 
-    status = loggedIn ? AuthStatus.loggedIn : AuthStatus.loggedOut;
+    if (!loggedIn) {
+      status = AuthStatus.loggedOut;
+      notifyListeners();
+      return;
+    }
+
+    // Token ada, tapi pastikan masih valid & ambil data user-nya sekalian
+    try {
+      await loadProfile();
+      status = AuthStatus.loggedIn;
+    } catch (_) {
+      // Token expired / server error saat startup → anggap logged out
+      currentUser = null;
+      status = AuthStatus.loggedOut;
+    }
 
     notifyListeners();
   }
@@ -92,7 +111,8 @@ class AuthProvider extends ChangeNotifier {
 
   /// Ambil data profil terbaru dari server (GET /profil/me.php) dan
   /// simpan ke currentUser. Exception dilempar lagi ke pemanggil (mis.
-  /// ProfilScreen) supaya UI di sana yang menentukan tampilan error-nya.
+  /// ProfilScreen atau checkLoginStatus) supaya pemanggil yang menentukan
+  /// tampilan/penanganan error-nya.
   Future<void> loadProfile() async {
     final user = await AuthService.getProfile();
 

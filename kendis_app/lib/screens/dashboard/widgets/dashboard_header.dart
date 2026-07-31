@@ -21,6 +21,9 @@ class DashboardHeader extends StatelessWidget {
       decoration: const BoxDecoration(color: Color(0xFFF0F6FA)),
       child: Column(
         children: [
+          // --- Baris atas: Foto profil, nama user, lonceng notifikasi ---
+          // Data nama diambil dari tabel MySQL `users.name` yang sudah
+          // dipetakan ke UserModel.nama di auth_provider.
           Row(
             children: [
               CircleAvatar(
@@ -29,22 +32,13 @@ class DashboardHeader extends StatelessWidget {
                 child: const Icon(Icons.person, color: Colors.white),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Halo, driver',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                  const Text(
-                    'Kendis',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
+              Text(
+                userName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const Spacer(),
               Stack(
@@ -57,6 +51,7 @@ class DashboardHeader extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
+                  // Badge notifikasi dari data['notifikasiUnread']
                   if (data?.notifikasiUnread != null &&
                       data!.notifikasiUnread! > 0)
                     Positioned(
@@ -83,6 +78,8 @@ class DashboardHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
+          // --- Baris bawah: Ucapan salam dan info perusahaan ---
+          // Data perusahaan & role berasal dari UserModel.company & .role
           Row(
             children: [
               Expanded(
@@ -94,13 +91,13 @@ class DashboardHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: isLoading ? 0 : 26,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    if (isLoading) _skeleton(160, 16),
+                    if (isLoading) _skeleton(200, 14),
                     const SizedBox(height: 4),
                     Text(
-                      'PLN Nusantara Power',
+                      'PLN Nusantara Power • Driver Operasional',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textBody,
