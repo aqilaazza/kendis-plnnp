@@ -8,8 +8,13 @@ $pdo = getDbConnection();
 
 // Filter opsional lewat query string: ?status=aktif|selesai|semua (default semua)
 $filter = $_GET['status'] ?? 'semua';
+// Pencarian bebas: ?q=... — dicocokkan ke kode request, kegiatan,
+// tempat/lokasi tujuan, dan nopol kendaraan.
+$search = trim($_GET['q'] ?? '');
 
 $where = "p.id_driver = :uid";
+$params = ['uid' => $user['id']];
+
 if ($filter === 'aktif') {
     // 'aktif' = penugasan yang BELUM mulai perjalanan (masih perlu driver
     // klik Detail -> Mulai Perjalanan / Pilih Kendaraan). Begitu status
@@ -19,6 +24,18 @@ if ($filter === 'aktif') {
     $where .= " AND r.status NOT IN ('on_trip','completed','rated','cancelled')";
 } elseif ($filter === 'selesai') {
     $where .= " AND r.status IN ('completed','rated')";
+}
+
+if ($search !== '') {
+    $where .= " AND (r.kode_request LIKE :q1 OR r.kegiatan LIKE :q2
+                 OR r.tempat_tujuan LIKE :q3 OR r.lokasi_tujuan LIKE :q4
+                 OR k.nopol LIKE :q5)";
+    $like = '%' . $search . '%';
+    $params['q1'] = $like;
+    $params['q2'] = $like;
+    $params['q3'] = $like;
+    $params['q4'] = $like;
+    $params['q5'] = $like;
 }
 
 $stmt = $pdo->prepare(
@@ -39,7 +56,7 @@ $stmt = $pdo->prepare(
      WHERE $where
      ORDER BY p.tanggal_berangkat DESC, p.created_at DESC"
 );
-$stmt->execute(['uid' => $user['id']]);
+$stmt->execute($params);
 $list = $stmt->fetchAll();
 
 jsonSuccess($list);

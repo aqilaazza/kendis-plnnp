@@ -8,8 +8,12 @@ class PenugasanService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<List<PenugasanModel>> getList({String status = 'semua'}) async {
-    final res = await ApiClient.get('/penugasan/list.php?status=$status');
+  static Future<List<PenugasanModel>> getList({String status = 'semua', String search = ''}) async {
+    var url = '/penugasan/list.php?status=$status';
+    if (search.trim().isNotEmpty) {
+      url += '&q=${Uri.encodeQueryComponent(search.trim())}';
+    }
+    final res = await ApiClient.get(url);
     final list = res['data'] as List;
     return list.map((e) => PenugasanModel.fromJson(e)).toList();
   }

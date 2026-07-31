@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
@@ -21,22 +22,57 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   late Future<Map<String, dynamic>> _ringkasanFuture;
   late Future<int> _aktifCountFuture;
 
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
-    _future = PenugasanService.getList(status: _filter);
-    // getRingkasan() sekarang sudah ada di PenugasanService (menyambung ke
-    // endpoint ringkasan.php yang baru).
+    _loadAll();
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Load ulang list (sesuai filter+search aktif), ringkasan bulan ini, dan
+  /// badge count "Aktif" — dipanggil dari initState, RefreshIndicator, ganti
+  /// filter, maupun search.
+  void _loadAll() {
+    _future = PenugasanService.getList(status: _filter, search: _searchCtrl.text);
     _ringkasanFuture = PenugasanService.getRingkasan();
     // Jumlah data untuk badge chip "Aktif" — diambil terpisah supaya angkanya
     // tetap tampil walaupun user sedang berada di filter Semua/Selesai.
+    // Sengaja tidak ikut search, biar badge selalu menunjukkan total aktif.
     _aktifCountFuture = PenugasanService.getList(status: 'aktif').then((l) => l.length);
+  }
+
+  /// Dipanggil oleh RefreshIndicator (tarik ke bawah untuk refresh).
+  Future<void> _onRefresh() async {
+    setState(_loadAll);
+    await _future;
+  }
+
+  void _onSearchChanged() {
+    // Debounce 400ms supaya tidak nembak API tiap kali user mengetik satu
+    // huruf — request baru dikirim setelah user berhenti mengetik sejenak.
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() {
+        _future = PenugasanService.getList(status: _filter, search: _searchCtrl.text);
+      });
+    });
   }
 
   void _setFilter(String filter) {
     setState(() {
       _filter = filter;
-      _future = PenugasanService.getList(status: filter);
+      _future = PenugasanService.getList(status: filter, search: _searchCtrl.text);
     });
   }
 
@@ -103,9 +139,12 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
             ),
 
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 100),
-                child: Column(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 100),
+                  child: Column(
                   children: [
                     const SizedBox(height: 16),
 
@@ -153,9 +192,16 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: TextField(
+                        controller: _searchCtrl,
                         decoration: InputDecoration(
                           hintText: "Cari laporan...",
                           prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchCtrl.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () => _searchCtrl.clear(),
+                                ),
                           filled: true,
                           fillColor: const Color(0xFFF5F7FA),
                           prefixIconColor: Colors.grey,
@@ -268,6 +314,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                       ),
                     ),
                   ],
+                ),
                 ),
               ),
             ),
