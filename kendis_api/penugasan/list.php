@@ -11,7 +11,12 @@ $filter = $_GET['status'] ?? 'semua';
 
 $where = "p.id_driver = :uid";
 if ($filter === 'aktif') {
-    $where .= " AND r.status NOT IN ('completed','rated','cancelled')";
+    // 'aktif' = penugasan yang BELUM mulai perjalanan (masih perlu driver
+    // klik Detail -> Mulai Perjalanan / Pilih Kendaraan). Begitu status
+    // berubah jadi 'on_trip' (oleh mulai.php atau pilih_kendaraan.php),
+    // item ini harus lepas dari tab Aktif dan pindah tanggung jawabnya ke
+    // menu Laporan (belum lapor), makanya on_trip ikut di-exclude di sini.
+    $where .= " AND r.status NOT IN ('on_trip','completed','rated','cancelled')";
 } elseif ($filter === 'selesai') {
     $where .= " AND r.status IN ('completed','rated')";
 }
