@@ -584,7 +584,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
           ],
 >>>>>>> 97eb2012588b12d01b5022e072045cd3554e0218
         ),
-      ),
+      ),    
     );
   }
 }
