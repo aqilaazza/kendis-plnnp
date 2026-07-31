@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../models/dashboard_model.dart';
-import '../../penugasan/penugasan_list_screen.dart';
+import '../../../services/nav_controller.dart'; // sesuaikan path sesuai lokasi file di project kamu
 
 class StatsDuoCard extends StatelessWidget {
   final DashboardModel? data;
   final bool isLoading;
 
   const StatsDuoCard({super.key, this.data, required this.isLoading});
+
+  // Index tab "Tugas" di MainNavScreen (lihat _screens di main_nav_screen.dart)
+  static const int _tugasTabIndex = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -23,14 +26,10 @@ class StatsDuoCard extends StatelessWidget {
             color: AppColors.primary,
             sublabel: 'Lihat Detail',
             showArrow: true,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PenugasanListScreen(),
-                ),
-              );
-            },
+            // FIX: sebelumnya Navigator.push ke PenugasanListScreen
+            // sebagai halaman baru (bottom nav hilang). Sekarang pindah
+            // tab lewat NavController, bottom nav tetap tampil.
+            onTap: () => NavController.instance.goTo(_tugasTabIndex),
           ),
         ),
         const SizedBox(width: 12),
@@ -45,15 +44,7 @@ class StatsDuoCard extends StatelessWidget {
             color: AppColors.success,
             sublabel: 'Minggu ini',
             showArrow: false,
-            onTap: () {
-              // Navigasi opsional jika ingin melihat daftar tugas selesai
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PenugasanListScreen(),
-                ),
-              );
-            },
+            onTap: () => NavController.instance.goTo(_tugasTabIndex),
           ),
         ),
       ],

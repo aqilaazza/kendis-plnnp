@@ -7,6 +7,7 @@ import '../laporan/laporan_screen.dart';
 import '../kegiatan/kegiatan_screen.dart';
 import '../profil/profil_screen.dart';
 import '../../services/badge_notifier.dart'; // sesuaikan path sesuai lokasi file di project kamu
+import '../../services/nav_controller.dart'; // sesuaikan path sesuai lokasi file di project kamu
 
 class MainNavScreen extends StatefulWidget {
   const MainNavScreen({super.key});
@@ -37,17 +38,32 @@ class _MainNavScreenState extends State<MainNavScreen> {
     // perubahan dari luar app, mis. driver lain ambil kegiatan yang sama).
     // Update instan tetap didapat dari refresh() yang dipanggil manual.
     _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) => BadgeNotifier.instance.refresh());
+
+    // ==========================================================
+    // NAV CONTROLLER
+    // Dengarkan permintaan pindah tab dari widget lain (mis. tombol
+    // "Buat Laporan" di BiayaCard) tanpa Navigator.push, supaya bottom
+    // nav tetap tampil dan tidak perlu tombol kembali.
+    // ==========================================================
+    NavController.instance.currentIndex.addListener(_onNavChanged);
   }
 
   @override
   void dispose() {
     _badgeTimer?.cancel();
     BadgeNotifier.instance.removeListener(_onBadgeChanged);
+    NavController.instance.currentIndex.removeListener(_onNavChanged);
     super.dispose();
   }
 
   void _onBadgeChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _onNavChanged() {
+    if (mounted) {
+      setState(() => _currentIndex = NavController.instance.currentIndex.value);
+    }
   }
 
   // Urutan: Dashboard, Tugas, Kegiatan (center/floating), Laporan, Profil

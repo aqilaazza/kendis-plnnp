@@ -21,11 +21,34 @@ $stmt = $pdo->prepare(
 $stmt->execute(['uid' => $user['id']]);
 $penugasanAktif = $stmt->fetchAll();
 
+// ============================================================
 // Statistik ringkas
+// ------------------------------------------------------------
+// FIX: "tugas_selesai" sekarang difilter untuk MINGGU INI saja
+// (Senin s.d. hari ini), sesuai label UI "Minggu ini" di dashboard.
+// Sebelumnya query menghitung SEMUA tugas selesai sepanjang waktu
+// (all-time), tidak sesuai dengan label yang ditampilkan.
+//
+// ASUMSI: kolom yang menandai "kapan status berubah jadi selesai"
+// adalah r.updated_at. Kalau ternyata kolom itu bukan sumber yang
+// tepat (mis. ada kolom khusus seperti r.tanggal_selesai), ganti
+// SEMUA pemakaian r.updated_at di query $stmtCount di bawah ini
+// dengan nama kolom yang benar.
+//
+// FIX #2: "tugas_aktif" sekarang hanya menghitung penugasan yang
+// SUDAH BERANGKAT (p.is_berangkat = 1). Sebelumnya semua status
+// selain completed/rated/cancelled dihitung aktif, termasuk yang
+// baru "approved_pool" tapi belum berangkat — sehingga angka
+// tampak lebih besar dari yang sebenarnya sedang berjalan.
+// ============================================================
 $stmtCount = $pdo->prepare(
     "SELECT
-        SUM(CASE WHEN r.status IN ('completed','rated') THEN 1 ELSE 0 END) AS selesai,
-        SUM(CASE WHEN r.status NOT IN ('completed','rated','cancelled') THEN 1 ELSE 0 END) AS aktif,
+        SUM(CASE WHEN r.status IN ('completed','rated')
+                 AND r.updated_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+            THEN 1 ELSE 0 END) AS selesai,
+        SUM(CASE WHEN r.status NOT IN ('completed','rated','cancelled')
+                 AND p.is_berangkat = 1
+            THEN 1 ELSE 0 END) AS aktif,
         COUNT(*) AS total
      FROM penugasan p
      JOIN request_kendis r ON r.id = p.id_request
