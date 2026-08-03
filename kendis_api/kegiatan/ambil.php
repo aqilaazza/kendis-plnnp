@@ -105,6 +105,30 @@ if ($stmt->rowCount() === 0) {
     );
 }
 
+// =========================================================
+// NOTIFIKASI: kabari driver lain kalau kegiatan ini sudah diambil
+// =========================================================
+
+try {
+    $stmtNotif = $pdo->prepare(
+        "INSERT INTO notifikasi (id_user, kategori, tipe, judul, pesan, is_read, created_at)
+         SELECT id, 'kegiatan', 'kegiatan_diambil_driver_lain',
+                'Kegiatan Diambil Driver Lain',
+                'Salah satu kegiatan harian telah diambil oleh driver lain.',
+                0, NOW()
+         FROM users
+         WHERE role = 'driver'
+           AND is_active = 1
+           AND id != :uid"
+    );
+    $stmtNotif->execute([
+        'uid' => $user['id'],
+    ]);
+} catch (\Throwable $e) {
+    // Sengaja tidak menggagalkan proses ambil kegiatan kalau notifikasi gagal terkirim.
+    @error_log('[NOTIF] Gagal insert notifikasi kegiatan_diambil_driver_lain: ' . $e->getMessage());
+}
+
 jsonSuccess(
     null,
     'Kegiatan berhasil Anda ambil'
