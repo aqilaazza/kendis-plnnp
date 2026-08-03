@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../services/pengaturan_notifikasi_service.dart';
 
 class PengaturanNotifikasiScreen extends StatefulWidget {
   const PengaturanNotifikasiScreen({super.key});
@@ -10,10 +11,66 @@ class PengaturanNotifikasiScreen extends StatefulWidget {
 }
 
 class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen> {
-  bool _notifikasiPenugasan = true;
-  bool _perubahanStatus = true;
-  bool _informasiPengumuman = true;
-  bool _suaraNotifikasi = true;
+  PengaturanNotifikasiModel? _pengaturan;
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPengaturan();
+  }
+
+  // ---------------------------------------------------------------------
+  // LOAD DARI API
+  // ---------------------------------------------------------------------
+
+  Future<void> _loadPengaturan() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final data = await PengaturanNotifikasiService.getPengaturan();
+      if (!mounted) return;
+      setState(() {
+        _pengaturan = data;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // UPDATE SATU TOGGLE + KIRIM KE API
+  // ---------------------------------------------------------------------
+
+  // UI langsung berubah duluan (optimistic update) biar switch terasa
+  // responsif. Kalau ternyata gagal kirim ke server, toggle dibalikin
+  // lagi ke nilai semula dan tampilkan pesan error.
+  Future<void> _updateSetting(PengaturanNotifikasiModel updated) async {
+    final previous = _pengaturan;
+    setState(() => _pengaturan = updated);
+
+    try {
+      await PengaturanNotifikasiService.simpanPengaturan(updated);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _pengaturan = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal menyimpan pengaturan. Coba lagi.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,64 +83,80 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
             _buildHeader(context),
 
             // CONTENT
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // SECTION NOTIFIKASI
-                    _sectionLabel('NOTIFIKASI'),
-                    const SizedBox(height: 8),
-                    _buildSettingCard(children: [
-                      _buildNotificationTile(
-                        icon: Icons.assignment_outlined,
-                        title: 'Notifikasi Penugasan',
-                        subtitle: 'Terima pemberitahuan saat mendapat penugasan baru',
-                        value: _notifikasiPenugasan,
-                        onChanged: (value) => setState(() => _notifikasiPenugasan = value),
-                      ),
-                      _buildDivider(),
-                      _buildNotificationTile(
-                        icon: Icons.sync_outlined,
-                        title: 'Perubahan Status Tugas',
-                        subtitle: 'Terima pemberitahuan saat status tugas berubah',
-                        value: _perubahanStatus,
-                        onChanged: (value) => setState(() => _perubahanStatus = value),
-                      ),
-                      _buildDivider(),
-                      _buildNotificationTile(
-                        icon: Icons.campaign_outlined,
-                        title: 'Informasi & Pengumuman',
-                        subtitle: 'Terima informasi dan pengumuman terbaru',
-                        value: _informasiPengumuman,
-                        onChanged: (value) => setState(() => _informasiPengumuman = value),
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
-
-                    // SECTION PREFERENSI
-                    _sectionLabel('PREFERENSI'),
-                    const SizedBox(height: 8),
-                    _buildSettingCard(children: [
-                      _buildNotificationTile(
-                        icon: Icons.volume_up_outlined,
-                        title: 'Suara Notifikasi',
-                        subtitle: 'Putar suara saat menerima notifikasi',
-                        value: _suaraNotifikasi,
-                        onChanged: (value) => setState(() => _suaraNotifikasi = value),
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
-
-                    // INFO
-                    _buildInfoCard(),
-                  ],
-                ),
-              ),
-            ),
+            Expanded(child: _buildBody()),
           ],
         ),
+      ),
+    );
+  }
+
+  // ===================================================================
+  // BODY (LOADING / ERROR / KONTEN)
+  // ===================================================================
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    if (_hasError || _pengaturan == null) {
+      return _buildErrorState();
+    }
+
+    final pengaturan = _pengaturan!;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SECTION NOTIFIKASI
+          _sectionLabel('NOTIFIKASI'),
+          const SizedBox(height: 8),
+          _buildSettingCard(children: [
+            _buildNotificationTile(
+              icon: Icons.assignment_outlined,
+              title: 'Notifikasi Penugasan',
+              subtitle: 'Terima pemberitahuan saat mendapat penugasan baru',
+              value: pengaturan.notifikasiPenugasan,
+              onChanged: (value) => _updateSetting(pengaturan.copyWith(notifikasiPenugasan: value)),
+            ),
+            _buildDivider(),
+            _buildNotificationTile(
+              icon: Icons.sync_outlined,
+              title: 'Perubahan Status Tugas',
+              subtitle: 'Terima pemberitahuan saat status tugas berubah',
+              value: pengaturan.perubahanStatus,
+              onChanged: (value) => _updateSetting(pengaturan.copyWith(perubahanStatus: value)),
+            ),
+            _buildDivider(),
+            _buildNotificationTile(
+              icon: Icons.campaign_outlined,
+              title: 'Informasi & Pengumuman',
+              subtitle: 'Terima informasi dan pengumuman terbaru',
+              value: pengaturan.informasiPengumuman,
+              onChanged: (value) => _updateSetting(pengaturan.copyWith(informasiPengumuman: value)),
+            ),
+          ]),
+          const SizedBox(height: 24),
+
+          // SECTION PREFERENSI
+          _sectionLabel('PREFERENSI'),
+          const SizedBox(height: 8),
+          _buildSettingCard(children: [
+            _buildNotificationTile(
+              icon: Icons.volume_up_outlined,
+              title: 'Suara Notifikasi',
+              subtitle: 'Putar suara saat menerima notifikasi',
+              value: pengaturan.suaraNotifikasi,
+              onChanged: (value) => _updateSetting(pengaturan.copyWith(suaraNotifikasi: value)),
+            ),
+          ]),
+          const SizedBox(height: 24),
+
+          // INFO
+          _buildInfoCard(),
+        ],
       ),
     );
   }
@@ -242,6 +315,44 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ===================================================================
+  // ERROR STATE
+  // ===================================================================
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppColors.danger.withOpacity(0.7)),
+            const SizedBox(height: 12),
+            const Text('Gagal memuat pengaturan',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 6),
+            const Text('Periksa koneksi internet Anda.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 40,
+              child: ElevatedButton(
+                onPressed: _loadPengaturan,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                child: const Text('Coba Lagi', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
