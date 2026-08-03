@@ -177,6 +177,9 @@ class _PilihKendaraanDialogState extends State<_PilihKendaraanDialog> {
   }
 }
 
+/// ============================================================
+/// KARTU KENDARAAN DI LIST — INI YANG PUNYA FOTO YANG MAU DIPERBESAR
+/// ============================================================
 class _KendaraanCard extends StatelessWidget {
   final KendaraanModel kendaraan;
   final bool selected;
@@ -186,13 +189,24 @@ class _KendaraanCard extends StatelessWidget {
   /// Foto disajikan lewat endpoint file.php di kendis_api sendiri (bukan
   /// ditebak path fisiknya) — supaya tetap benar walau lokasi folder
   /// uploads di server beda dari lokal, atau pas pindah hosting nanti.
-  /// NOTE: file.php ada di kendis_api/penugasan/file.php (bukan di root
+  /// NOTE 1: file.php ada di kendis_api/penugasan/file.php (bukan di root
   /// kendis_api), jadi URL-nya WAJIB menyertakan segmen /penugasan/ —
   /// kalau tidak, request 404 sebelum sempat sampai ke file.php sama sekali.
+  /// NOTE 2: kolom `foto` di database kendaraan HANYA berisi nama file flat
+  /// (contoh: "kendaraan_1785397305_566.webp"), TIDAK termasuk nama folder.
+  /// Ini kekonsistenan dengan web PHP kendis (lihat get_available_vehicles.php
+  /// yang eksplisit menulis "uploads/kendaraan/<?= $v['foto'] ?>") — jadi
+  /// folder "kendaraan/" harus ditambahkan manual di sini juga, bukan
+  /// diasumsikan sudah ada di dalam nilai `foto`.
   static String _fotoUrl(String foto) {
     if (foto.startsWith('http')) return foto;
-    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(foto)}';
+    final path = foto.contains('/') ? foto : 'kendaraan/$foto';
+    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(path)}';
   }
+
+  // >>> UKURAN FOTO KENDARAAN DI-KONTROL DARI SINI <<<
+  static const double _fotoWidth = 120;
+  static const double _fotoHeight = 90;
 
   @override
   Widget build(BuildContext context) {
@@ -217,19 +231,15 @@ class _KendaraanCard extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        width: 56,
-                        height: 56,
+                        width: _fotoWidth,
+                        height: _fotoHeight,
                         color: const Color(0xFFF0F3F7),
-                        // NOTE: kolom `foto` di database sudah berupa path
-                        // relatif LENGKAP dari root uploads, termasuk nama
-                        // foldernya sendiri (contoh: "kendaraan/xxxx.webp").
-                        // Folder fisiknya ada di www/kendis/uploads/... —
-                        // beda dari folder API (kendis-plnnp/kendis_api) —
-                        // jadi di sini ambil root domain-nya doang lalu
-                        // gabung ke /kendis/uploads/, bukan nempel ke
-                        // AppConfig.baseUrl secara langsung.
+                        // Foto ditampilkan lewat _fotoUrl() di atas, yang
+                        // otomatis menambahkan prefix folder "kendaraan/"
+                        // kalau nilai `foto` dari database masih flat
+                        // filename (lihat NOTE 2 di _fotoUrl).
                         child: (kendaraan.foto == null || kendaraan.foto!.isEmpty)
-                            ? const Icon(Icons.directions_car_filled_rounded, color: AppColors.textMuted, size: 28)
+                            ? const Icon(Icons.directions_car_filled_rounded, color: AppColors.textMuted, size: 40)
                             : Image.network(
                                 _fotoUrl(kendaraan.foto!),
                                 fit: BoxFit.cover,
@@ -241,7 +251,7 @@ class _KendaraanCard extends StatelessWidget {
                                     ? child
                                     : const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
                                 errorBuilder: (context, error, stack) =>
-                                    const Icon(Icons.directions_car_filled_rounded, color: AppColors.textMuted, size: 28),
+                                    const Icon(Icons.directions_car_filled_rounded, color: AppColors.textMuted, size: 40),
                               ),
                       ),
                     ),
@@ -290,6 +300,12 @@ class _KendaraanCard extends StatelessWidget {
   }
 }
 
+/// ============================================================
+/// POPUP KONFIRMASI "Ya, Mulai?" — TIDAK ADA HUBUNGANNYA SAMA FOTO
+/// KENDARAAN. Lingkaran ini cuma ikon tanda tanya. JANGAN DIUBAH kalau
+/// yang mau diperbesar itu foto kendaraan — target-nya di _KendaraanCard
+/// di atas, bukan di sini.
+/// ============================================================
 class _KonfirmasiDialog extends StatelessWidget {
   final KendaraanModel kendaraan;
   const _KonfirmasiDialog({required this.kendaraan});
@@ -304,8 +320,8 @@ class _KonfirmasiDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.primary, width: 2),
