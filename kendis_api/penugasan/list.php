@@ -16,7 +16,6 @@ $where = "p.id_driver = :uid";
 $params = ['uid' => $user['id']];
 
 if ($filter === 'aktif') {
-<<<<<<< HEAD
     // FIX: disamakan dengan definisi "aktif" di profil/dashboard.php —
     // hanya hitung penugasan yang SUDAH BERANGKAT (is_berangkat = 1),
     // bukan semua status selain completed/rated/cancelled. Sebelumnya
@@ -25,14 +24,6 @@ if ($filter === 'aktif') {
     // Dashboard.
     $where .= " AND r.status NOT IN ('completed','rated','cancelled')
                 AND p.is_berangkat = 1";
-=======
-    // 'aktif' = penugasan yang BELUM mulai perjalanan (masih perlu driver
-    // klik Detail -> Mulai Perjalanan / Pilih Kendaraan). Begitu status
-    // berubah jadi 'on_trip' (oleh mulai.php atau pilih_kendaraan.php),
-    // item ini harus lepas dari tab Aktif dan pindah tanggung jawabnya ke
-    // menu Laporan (belum lapor), makanya on_trip ikut di-exclude di sini.
-    $where .= " AND r.status NOT IN ('on_trip','completed','rated','cancelled')";
->>>>>>> 8c9ad31a584df1cf1308aabb974ce8064a86fbe1
 } elseif ($filter === 'selesai') {
     $where .= " AND r.status IN ('completed','rated')";
 }
