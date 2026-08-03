@@ -11,7 +11,14 @@ $filter = $_GET['status'] ?? 'semua';
 
 $where = "p.id_driver = :uid";
 if ($filter === 'aktif') {
-    $where .= " AND r.status NOT IN ('completed','rated','cancelled')";
+    // FIX: disamakan dengan definisi "aktif" di profil/dashboard.php —
+    // hanya hitung penugasan yang SUDAH BERANGKAT (is_berangkat = 1),
+    // bukan semua status selain completed/rated/cancelled. Sebelumnya
+    // penugasan yang baru "approved_pool" (belum berangkat) ikut
+    // terhitung di sini, sehingga jumlahnya beda dengan card di
+    // Dashboard.
+    $where .= " AND r.status NOT IN ('completed','rated','cancelled')
+                AND p.is_berangkat = 1";
 } elseif ($filter === 'selesai') {
     $where .= " AND r.status IN ('completed','rated')";
 }
