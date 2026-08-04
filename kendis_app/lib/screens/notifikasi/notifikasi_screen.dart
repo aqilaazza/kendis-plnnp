@@ -620,9 +620,9 @@ class _NotifikasiCard extends StatelessWidget {
   }
 }
 
-/// Tombol centang bulat di tiap kartu. Notifikasi yang sudah dibaca
-/// tampil terisi (solid) & non-aktif; yang belum dibaca tampil outline
-/// dan bisa ditap buat langsung mark-as-read tanpa buka detail.
+/// FIX: sebelumnya pakai GestureDetector biasa -- karena tombol ini nempel
+/// di dalam InkWell besar (card di atasnya), tap-nya sering "ketelan" sama
+/// InkWell card, jadi yang kepencet malah navigasi card, bukan mark-read.
 class _MarkReadButton extends StatelessWidget {
   final bool isRead;
   final bool isLoading;
@@ -647,23 +647,28 @@ class _MarkReadButton extends StatelessWidget {
       );
     }
 
-    return GestureDetector(
-      onTap: isRead ? null : onTap,
-      child: Container(
-        width: 26,
-        height: 26,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isRead ? AppColors.success : Colors.transparent,
-          border: Border.all(
-            color: isRead ? AppColors.success : AppColors.textPlaceholder,
-            width: 1.5,
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: isRead ? null : onTap,
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isRead ? AppColors.success : Colors.transparent,
+            border: Border.all(
+              color: isRead ? AppColors.success : AppColors.textPlaceholder,
+              width: 1.5,
+            ),
           ),
-        ),
-        child: Icon(
-          Icons.check_rounded,
-          size: 16,
-          color: isRead ? Colors.white : AppColors.textPlaceholder,
+          child: Icon(
+            Icons.check_rounded,
+            size: 16,
+            color: isRead ? Colors.white : AppColors.textPlaceholder,
+          ),
         ),
       ),
     );
