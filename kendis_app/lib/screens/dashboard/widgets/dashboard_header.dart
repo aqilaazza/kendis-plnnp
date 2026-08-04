@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../models/dashboard_model.dart';
+import '../../notifikasi/notifikasi_screen.dart';
 
 class DashboardHeader extends StatelessWidget {
   final DashboardModel? data;
@@ -44,7 +45,17 @@ class DashboardHeader extends StatelessWidget {
               Stack(
                 children: [
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      // Buka halaman notifikasi. Setelah balik, refresh
+                      // dashboard supaya badge count ke-update lagi
+                      // (misal ada notifikasi yang baru ditandai dibaca).
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotifikasiScreen(),
+                        ),
+                      );
+                    },
                     icon: const Icon(
                       Icons.notifications_none_rounded,
                       size: 30,
@@ -57,18 +68,20 @@ class DashboardHeader extends StatelessWidget {
                     Positioned(
                       right: 6,
                       top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: AppColors.danger,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '${data!.notifikasiUnread}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                      child: IgnorePointer(
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.danger,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${data!.notifikasiUnread}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),

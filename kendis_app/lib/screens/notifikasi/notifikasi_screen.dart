@@ -4,14 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_theme.dart';
 import '../../models/notifikasi_model.dart';
 import '../../services/notifikasi_service.dart';
+import '../../services/badge_notifier.dart';
+import '../laporan/laporan_screen.dart';
+import '../penugasan/penugasan_list_screen.dart';
+import '../kegiatan/kegiatan_screen.dart';
 
 /// Screen daftar notifikasi dengan tab filter: Semua / Belum Dibaca / Riwayat.
-/// Support pull-to-refresh, mark as read (single & all), dan navigasi ke
-/// halaman terkait berdasarkan `kategori` notifikasi + `idRequest`.
-///
-/// PENTING: backend (list.php) tidak pernah mengirim field `link` — jadi
-/// navigasi dibangun di sisi app lewat `_routeFor()`. Sesuaikan nama route
-/// di bawah dengan route yang sudah kamu daftarkan di MaterialApp.
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
 
@@ -41,7 +39,16 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
     'riwayat': null,
   };
 
+  /// ID yang lagi diproses mark-read-nya, biar tombol centang bisa
+  /// nunjukin loading kecil & nggak ke-tap dobel.
+  final Set<int> _markingRead = {};
+
   static const _tabs = ['semua', 'belum_dibaca', 'riwayat'];
+  static const _tabLabels = {
+    'semua': 'Semua',
+    'belum_dibaca': 'Belum Dibaca',
+    'riwayat': 'Riwayat',
+  };
 
   @override
   void initState() {
@@ -87,6 +94,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
     try {
       await NotifikasiService.markAllRead();
       await _refreshAll();
+      BadgeNotifier.instance.refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua notifikasi ditandai sudah dibaca')),
@@ -99,42 +107,116 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
     }
   }
 
-  /// Tentukan route tujuan berdasarkan kategori notifikasi.
-  /// Sesuaikan nama route ini dengan yang terdaftar di MaterialApp kamu.
-  String? _routeFor(NotifikasiModel item) {
-    if (item.idRequest == null) return null;
-    switch (item.kategori) {
-      case 'penugasan':
-        return '/penugasan/detail';
-      case 'laporan':
-        return '/laporan/form';
-      default:
-        return null;
+  /// Tandai satu notifikasi sudah dibaca lewat tombol centang.
+  /// Item ini bakal "pindah" ke tab Riwayat / hilang dari Belum Dibaca
+  /// begitu data di-refresh. Setelah berhasil, panggil BadgeNotifier.refresh()
+  /// supaya badge lonceng di layar lain (Dashboard/Laporan/Penugasan) ikut
+  /// update instan.
+  Future<void> _markOneRead(NotifikasiModel item) async {
+    if (item.isRead || _markingRead.contains(item.id)) return;
+    setState(() => _markingRead.add(item.id));
+    try {
+      await NotifikasiService.markRead(item.id);
+      await _refreshAll();
+      BadgeNotifier.instance.refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menandai dibaca: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _markingRead.remove(item.id));
     }
   }
 
-  Future<void> _handleTap(NotifikasiModel item) async {
-    if (!item.isRead) {
-      try {
-        await NotifikasiService.markRead(item.id);
-        await _refreshAll();
-      } catch (_) {
-        // Diamkan — navigasi tetap lanjut walau mark read gagal.
-      }
+  /// Tap di badan card (judul/pesan) HANYA navigasi ke menu terkait.
+  /// TIDAK menandai notifikasi sebagai sudah dibaca -- itu murni tugas
+  /// tombol centang (_markOneRead), supaya user tetap bisa lihat status
+  /// belum-dibaca-nya walau sudah pernah buka halaman tugasnya.
+  ///
+  /// Push langsung ke widget screen (bukan Navigator.pushNamed) supaya
+  /// tidak bergantung pada route terdaftar di MaterialApp.
+  ///
+  /// `idRequest` dikirim sebagai `highlightId` supaya screen tujuan bisa
+  /// auto-pilih tab yang tepat, auto-scroll, dan highlight card yang
+  /// berkaitan dengan notifikasi ini -- bukan cuma buka list kosongan.
+  void _handleTap(NotifikasiModel item) {
+    final highlightId = item.idRequest;
+    // Dibikin toleran (trim + lowercase) -- kalau backend ngirim "Penugasan"
+    // atau ada spasi nyempil, tetep ke-detect. Sebelumnya switch ini pakai
+    // exact-match string sensitif kapital/spasi, jadi kalau nilai kategori
+    // dari API meleset dikit aja, jatuh ke default dan diem tanpa error.
+    var kategori = item.kategori?.trim().toLowerCase();
+
+    // Fallback: sebagian notifikasi (mis. yang ditujukan untuk pemohon di
+    // web, seperti "Perjalanan Dimulai" / "Perjalanan Selesai - Berikan
+    // Penilaian" dari pilih_kendaraan.php, mulai.php, laporan/submit.php)
+    // tidak mengisi kolom kategori sama sekali. Daripada langsung dianggap
+    // error, coba tebak dulu dari judulnya supaya tetap bisa diarahkan
+    // kalau relevan buat driver.
+    if (kategori == null || kategori.isEmpty) {
+      kategori = _inferKategoriFromJudul(item.judul);
     }
 
-    final route = _routeFor(item);
-    if (route != null && mounted) {
-      try {
-        await Navigator.pushNamed(
-          context,
-          route,
-          arguments: {'id_request': item.idRequest},
+    switch (kategori) {
+      case 'penugasan':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PenugasanListScreen(highlightId: highlightId),
+          ),
         );
-      } catch (_) {
-        // Route belum terdaftar — abaikan saja, jangan crash.
-      }
+        break;
+      case 'laporan':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LaporanScreen(highlightId: highlightId),
+          ),
+        );
+        break;
+      case 'kegiatan':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => KegiatanScreen(highlightId: highlightId),
+          ),
+        );
+        break;
+      default:
+        // Kategori nggak dikenali & nggak ketebak dari judul -- kemungkinan
+        // besar ini notifikasi yang memang ditujukan untuk halaman web
+        // (bukan untuk app driver), jadi cukup diinfokan tanpa terkesan
+        // seperti error/debug.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notifikasi ini tidak memiliki halaman terkait di aplikasi ini.'),
+          ),
+        );
+        break;
     }
+  }
+
+  /// Tebakan kasar kategori dari judul notifikasi, dipakai HANYA sebagai
+  /// fallback ketika backend tidak mengisi kolom `kategori` sama sekali.
+  /// Cocokkan kata kunci yang biasa dipakai pada judul notifikasi terkait
+  /// masing-masing fitur (penugasan/laporan/kegiatan).
+  String? _inferKategoriFromJudul(String judul) {
+    final j = judul.toLowerCase();
+    if (j.contains('kegiatan')) return 'kegiatan';
+    if (j.contains('laporan')) return 'laporan';
+    if (j.contains('pengugasan') ||
+        j.contains('penugasan') ||
+        j.contains('perjalanan') ||
+        j.contains('kendaraan')) {
+      return 'penugasan';
+    }
+    return null;
+  }
+
+  /// Aksi gabungan tombol centang: tandai dibaca SEKALIGUS langsung
+  /// navigasi + highlight ke halaman terkait -- satu tap, dua aksi.
+  Future<void> _markReadAndNavigate(NotifikasiModel item) async {
+    await _markOneRead(item);
+    if (!mounted) return;
+    _handleTap(item);
   }
 
   @override
@@ -142,14 +224,19 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: Text(
           'Notifikasi',
           style: GoogleFonts.inter(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
+        backgroundColor: AppColors.background,
         actions: [
           TextButton(
             onPressed: _markAllRead,
@@ -163,23 +250,20 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
             ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textMuted,
-          indicatorColor: AppColors.primary,
-          labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-          tabs: const [
-            Tab(text: 'Semua'),
-            Tab(text: 'Belum Dibaca'),
-            Tab(text: 'Riwayat'),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _tabs.map(_buildTabBody).toList(),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: _PillTabBar(controller: _tabController, tabs: _tabs, labels: _tabLabels),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _tabs.map(_buildTabBody).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -201,20 +285,82 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
       return _buildEmptyState(filter);
     }
 
+    final groups = _groupByDate(items);
+
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () => _loadData(filter),
-      child: ListView.separated(
+      child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, index) => _NotifikasiCard(
-          item: items[index],
-          onTap: () => _handleTap(items[index]),
-        ),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount: groups.length,
+        itemBuilder: (context, groupIndex) {
+          final group = groups[groupIndex];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 8, left: 2),
+                child: Text(
+                  group.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              ...group.items.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _NotifikasiCard(
+                    item: item,
+                    isMarking: _markingRead.contains(item.id),
+                    onTap: () => _handleTap(item),
+                    onMarkRead: () => _markReadAndNavigate(item),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  /// Kelompokkan notifikasi jadi "Hari Ini" / "Kemarin" / tanggal lain
+  /// (list sudah terurut DESC dari backend, jadi urutan grup ikut terjaga).
+  List<_NotifGroup> _groupByDate(List<NotifikasiModel> items) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final groups = <String, List<NotifikasiModel>>{};
+    final order = <String>[];
+
+    for (final item in items) {
+      final d = item.createdAt;
+      final day = DateTime(d.year, d.month, d.day);
+      String label;
+      if (day == today) {
+        label = 'Hari Ini';
+      } else if (day == yesterday) {
+        label = 'Kemarin';
+      } else {
+        const bulan = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+          'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+        ];
+        label = '${d.day} ${bulan[d.month - 1]} ${d.year}';
+      }
+      if (!groups.containsKey(label)) {
+        groups[label] = [];
+        order.add(label);
+      }
+      groups[label]!.add(item);
+    }
+
+    return order.map((label) => _NotifGroup(label, groups[label]!)).toList();
   }
 
   Widget _buildErrorState(String filter) {
@@ -281,22 +427,92 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
   }
 }
 
+class _NotifGroup {
+  final String label;
+  final List<NotifikasiModel> items;
+  _NotifGroup(this.label, this.items);
+}
+
+/// Tab bar bentuk pill (kapsul) sesuai desain — tab aktif jadi
+/// background gelap solid, bukan underline seperti TabBar default.
+class _PillTabBar extends StatelessWidget {
+  final TabController controller;
+  final List<String> tabs;
+  final Map<String, String> labels;
+
+  const _PillTabBar({
+    required this.controller,
+    required this.tabs,
+    required this.labels,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        return Row(
+          children: List.generate(tabs.length, (i) {
+            final selected = controller.index == i;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => controller.animateTo(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.primaryDark : AppColors.backgroundAlt,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    labels[tabs[i]] ?? tabs[i],
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
 class _NotifikasiCard extends StatelessWidget {
   final NotifikasiModel item;
+  final bool isMarking;
   final VoidCallback onTap;
+  final VoidCallback onMarkRead;
 
-  const _NotifikasiCard({required this.item, required this.onTap});
+  const _NotifikasiCard({
+    required this.item,
+    required this.isMarking,
+    required this.onTap,
+    required this.onMarkRead,
+  });
 
-  IconData get _icon {
+  /// Icon + warna per kategori/tipe notifikasi.
+  /// Tipe yang mengandung kata "peringatan" atau "belum_dipilih" dianggap
+  /// warning (merah/pink), sisanya dipetakan dari kategori.
+  (IconData, Color, Color) get _iconStyle {
+    final tipe = item.tipe ?? '';
+    if (tipe.contains('peringatan') || tipe.contains('belum_dipilih')) {
+      return (Icons.warning_amber_rounded, AppColors.danger, const Color(0xFFFCE8E8));
+    }
     switch (item.kategori) {
-      case 'request':
-        return Icons.assignment_outlined;
-      case 'pembayaran':
-        return Icons.payments_outlined;
-      case 'sistem':
-        return Icons.settings_outlined;
+      case 'penugasan':
+        return (Icons.assignment_outlined, AppColors.primary, AppColors.primary.withOpacity(0.12));
+      case 'laporan':
+        return (Icons.receipt_long_outlined, AppColors.primary, AppColors.primary.withOpacity(0.12));
+      case 'kegiatan':
+        return (Icons.event_note_outlined, AppColors.accentGold, AppColors.accentGold.withOpacity(0.15));
       default:
-        return Icons.notifications_outlined;
+        return (Icons.notifications_outlined, AppColors.accentGold, AppColors.accentGold.withOpacity(0.15));
     }
   }
 
@@ -304,7 +520,7 @@ class _NotifikasiCard extends StatelessWidget {
     final diff = DateTime.now().difference(dt);
     if (diff.inSeconds < 60) return 'Baru saja';
     if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
-    if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+    if (diff.inHours < 24) return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     if (diff.inDays < 7) return '${diff.inDays} hari lalu';
     return '${dt.day.toString().padLeft(2, '0')}/'
         '${dt.month.toString().padLeft(2, '0')}/'
@@ -314,6 +530,7 @@ class _NotifikasiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unread = !item.isRead;
+    final (icon, iconColor, iconBg) = _iconStyle;
 
     return Material(
       color: AppColors.cardBackground,
@@ -326,7 +543,7 @@ class _NotifikasiCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: unread ? AppColors.primary.withOpacity(0.25) : AppColors.backgroundAlt,
+              color: unread ? AppColors.primary.withOpacity(0.2) : AppColors.backgroundAlt,
               width: 1,
             ),
           ),
@@ -336,17 +553,8 @@ class _NotifikasiCard extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(
-                  color: unread
-                      ? AppColors.primary.withOpacity(0.12)
-                      : AppColors.backgroundAlt,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _icon,
-                  size: 20,
-                  color: unread ? AppColors.primary : AppColors.textMuted,
-                ),
+                decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                child: Icon(icon, size: 20, color: iconColor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -354,27 +562,42 @@ class _NotifikasiCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            item.judul,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
                         if (unread)
                           Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(left: 8, top: 4),
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.only(right: 6, top: 5),
                             decoration: const BoxDecoration(
-                              color: AppColors.accentGold,
+                              color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
                           ),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: item.judul,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '  •  ${_formatWaktu(item.createdAt)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -384,16 +607,63 @@ class _NotifikasiCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(fontSize: 13, color: AppColors.textBody),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _formatWaktu(item.createdAt),
-                      style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
-                    ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              _MarkReadButton(isRead: item.isRead, isLoading: isMarking, onTap: onMarkRead),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tombol centang bulat di tiap kartu. Notifikasi yang sudah dibaca
+/// tampil terisi (solid) & non-aktif; yang belum dibaca tampil outline
+/// dan bisa ditap buat langsung mark-as-read tanpa buka detail.
+class _MarkReadButton extends StatelessWidget {
+  final bool isRead;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _MarkReadButton({
+    required this.isRead,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const SizedBox(
+        width: 26,
+        height: 26,
+        child: Padding(
+          padding: EdgeInsets.all(4),
+          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: isRead ? null : onTap,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isRead ? AppColors.success : Colors.transparent,
+          border: Border.all(
+            color: isRead ? AppColors.success : AppColors.textPlaceholder,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          Icons.check_rounded,
+          size: 16,
+          color: isRead ? Colors.white : AppColors.textPlaceholder,
         ),
       ),
     );
