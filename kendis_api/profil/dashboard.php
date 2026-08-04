@@ -6,7 +6,12 @@ require_once __DIR__ . '/../helpers/auth.php';
 $user = requireDriverAuth();
 $pdo = getDbConnection();
 
-// Penugasan aktif (belum selesai)
+// Penugasan aktif (sedang berjalan). Definisi "aktif" di sini SENGAJA
+// disamakan persis dengan statistik.tugas_aktif di bawah (is_berangkat = 1)
+// -- supaya list ini dan angka count-nya konsisten dalam 1 response yang
+// sama. Kalau nanti butuh list "tugas yang masih perlu di-follow-up driver
+// tapi belum berangkat", itu beda konsep -- pakai endpoint
+// penugasan/menunggu_konfirmasi.php, bukan nambah kondisi lain di sini.
 $stmt = $pdo->prepare(
     "SELECT p.*, r.kode_request, r.tempat_tujuan, r.tanggal_berangkat AS req_tgl_berangkat,
             r.jam_berangkat, r.kegiatan, r.status AS status_request,
@@ -16,6 +21,7 @@ $stmt = $pdo->prepare(
      LEFT JOIN kendaraan k ON k.id = p.id_kendaraan
      WHERE p.id_driver = :uid
        AND r.status NOT IN ('completed', 'rated', 'cancelled')
+       AND p.is_berangkat = 1
      ORDER BY p.created_at DESC"
 );
 $stmt->execute(['uid' => $user['id']]);
