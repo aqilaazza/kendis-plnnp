@@ -107,6 +107,26 @@ class ProfilScreen extends StatelessWidget {
   }
 
   // ---------------------------------------------------------------------
+  // REFRESH DATA PROFIL
+  // ---------------------------------------------------------------------
+
+  // Ditarik ke bawah (pull-to-refresh) -> minta AuthProvider ambil ulang
+  // data user terbaru dari server. Karena build() pakai context.watch,
+  // begitu AuthProvider selesai update, ProfilScreen otomatis rebuild
+  // dengan data baru tanpa perlu StatefulWidget/local loading state.
+  Future<void> _refreshProfile(BuildContext context) async {
+    try {
+      await context.read<AuthProvider>().loadProfile();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal memuat ulang profil')),
+        );
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // SNACKBAR SUKSES (dipakai bareng oleh Edit Profil & Ganti Password)
   // ---------------------------------------------------------------------
 
@@ -154,82 +174,87 @@ class ProfilScreen extends StatelessWidget {
           children: [
             _buildHeader(context),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                children: [
-                  _buildProfileCard(context, user),
-                  const SizedBox(height: 20),
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () => _refreshProfile(context),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                  children: [
+                    _buildProfileCard(context, user),
+                    const SizedBox(height: 20),
 
-                  _sectionLabel('AKUN'),
-                  _menuCard(children: [
-                    _MenuTile(
-                      icon: Icons.person_outline,
-                      label: 'Edit Profil',
-                      onTap: () async {
-                        final result = await Navigator.push(
+                    _sectionLabel('AKUN'),
+                    _menuCard(children: [
+                      _MenuTile(
+                        icon: Icons.person_outline,
+                        label: 'Edit Profil',
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EditProfilScreen()),
+                          );
+                          if (result == true && context.mounted) {
+                            _showSuccessSnackBar(context, 'Profil berhasil diperbarui');
+                          }
+                        },
+                      ),
+                      _MenuTile(
+                        icon: Icons.lock_reset_outlined,
+                        label: 'Ganti Password',
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const GantiPasswordScreen()),
+                          );
+                          if (result == true && context.mounted) {
+                            _showSuccessSnackBar(context, 'Password berhasil diperbarui');
+                          }
+                        },
+                      ),
+                      _MenuTile(
+                        icon: Icons.tune_outlined,
+                        label: 'Pengaturan Notifikasi',
+                        onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const EditProfilScreen()),
-                        );
-                        if (result == true && context.mounted) {
-                          _showSuccessSnackBar(context, 'Profil berhasil diperbarui');
-                        }
-                      },
-                    ),
-                    _MenuTile(
-                      icon: Icons.lock_reset_outlined,
-                      label: 'Ganti Password',
-                      onTap: () async {
-                        final result = await Navigator.push(
+                          MaterialPageRoute(builder: (_) => const PengaturanNotifikasiScreen()),
+                        ),
+                      ),
+                    ]),
+
+                    const SizedBox(height: 20),
+
+                    _sectionLabel('LAINNYA'),
+                    _menuCard(children: [
+                      _MenuTile(
+                        icon: Icons.help_outline,
+                        label: 'Pusat Bantuan',
+                        onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const GantiPasswordScreen()),
-                        );
-                        if (result == true && context.mounted) {
-                          _showSuccessSnackBar(context, 'Password berhasil diperbarui');
-                        }
-                      },
-                    ),
-                    _MenuTile(
-                      icon: Icons.tune_outlined,
-                      label: 'Pengaturan Notifikasi',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PengaturanNotifikasiScreen()),
+                          MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
+                        ),
                       ),
-                    ),
-                  ]),
-
-                  const SizedBox(height: 20),
-
-                  _sectionLabel('LAINNYA'),
-                  _menuCard(children: [
-                    _MenuTile(
-                      icon: Icons.help_outline,
-                      label: 'Pusat Bantuan',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PusatBantuanScreen()),
+                      _MenuTile(
+                        icon: Icons.info_outline,
+                        label: 'Tentang Aplikasi',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const TentangAplikasiScreen()),
+                        ),
                       ),
-                    ),
-                    _MenuTile(
-                      icon: Icons.info_outline,
-                      label: 'Tentang Aplikasi',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TentangAplikasiScreen()),
+                      _MenuTile(
+                        icon: Icons.logout_outlined,
+                        label: 'Keluar',
+                        isDanger: true,
+                        showArrow: false,
+                        onTap: () => _confirmLogout(context),
                       ),
-                    ),
-                    _MenuTile(
-                      icon: Icons.logout_outlined,
-                      label: 'Keluar',
-                      isDanger: true,
-                      showArrow: false,
-                      onTap: () => _confirmLogout(context),
-                    ),
-                  ]),
+                    ]),
 
-                  const SizedBox(height: 32),
-                  _buildAppVersion(),
-                ],
+                    const SizedBox(height: 32),
+                    _buildAppVersion(),
+                  ],
+                ),
               ),
             ),
           ],
