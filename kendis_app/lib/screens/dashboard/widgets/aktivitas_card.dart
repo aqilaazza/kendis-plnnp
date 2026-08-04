@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/app_theme.dart';
 import '../../../models/dashboard_model.dart';
+import '../../../services/nav_controller.dart'; // sesuaikan path sesuai lokasi file di project kamu
 import '../../penugasan/penugasan_detail_screen.dart';
-import '../../penugasan/penugasan_list_screen.dart'; // Import halaman list screen
 
 class AktivitasCard extends StatelessWidget {
   final DashboardModel? data;
@@ -48,13 +48,11 @@ class AktivitasCard extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    // Navigasi ke Halaman List Penugasan
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PenugasanListScreen(),
-                      ),
-                    );
+                    // Pindah tab lewat NavController (bukan Navigator.push),
+                    // supaya bottom nav tetap tampil. "Aktivitas Terakhir"
+                    // isinya laporan yang sudah dikirim, jadi diarahkan
+                    // langsung ke sub-tab "Riwayat" di tab Laporan.
+                    NavController.instance.goToLaporanRiwayat();
                   },
                   borderRadius: BorderRadius.circular(4),
                   child: const Padding(
