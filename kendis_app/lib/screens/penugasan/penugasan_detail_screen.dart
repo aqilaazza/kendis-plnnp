@@ -71,12 +71,32 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
   /// (lihat pilih_kendaraan_screen.dart). Dibuka lewat endpoint file.php
   /// milik kendis_api sendiri, bukan ditebak path fisiknya langsung, supaya
   /// tetap benar walau lokasi folder uploads di server beda.
-  /// NOTE: file.php ada di kendis_api/penugasan/file.php (bukan di root
+  /// NOTE 1: file.php ada di kendis_api/penugasan/file.php (bukan di root
   /// kendis_api), jadi URL-nya WAJIB menyertakan segmen /penugasan/ —
   /// kalau tidak, request 404 sebelum sempat sampai ke file.php sama sekali.
+  /// NOTE 2: kolom `surat_penugasan` di database HANYA berisi nama file
+  /// flat, TIDAK termasuk nama folder. Ini konsisten sama web PHP kendis
+  /// (lihat penugasan_driver.php yang eksplisit menulis
+  /// "uploads/surat_penugasan/" + p.surat_penugasan) — jadi folder
+  /// "surat_penugasan/" harus ditambahkan manual di sini juga, sama
+  /// seperti folder "kendaraan/" di _fotoUrl (pilih_kendaraan_screen.dart).
   static String _fileUrl(String path) {
     if (path.startsWith('http')) return path;
-    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(path)}';
+    final fullPath = path.contains('/') ? path : 'surat_penugasan/$path';
+    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(fullPath)}';
+  }
+
+  /// true kalau ekstensi file-nya gambar -> bisa ditampilkan sebagai
+  /// thumbnail langsung (Image.network). Kalau PDF/dokumen lain, gak bisa
+  /// di-render sebagai gambar, jadi tetap pakai tombol "Lihat File" biasa
+  /// yang buka lewat browser/viewer eksternal.
+  static bool _isImageFile(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.gif');
   }
 
   Future<void> _lihatSuratPenugasan(String suratPenugasan) async {
@@ -308,16 +328,19 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                                       const Text("SURAT PENUGASAN",
                                           style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
                                       const SizedBox(height: 6),
-                                      OutlinedButton.icon(
-                                        onPressed: () => _lihatSuratPenugasan(suratPenugasan),
-                                        icon: const Icon(Icons.description_outlined, size: 16),
-                                        label: const Text("Lihat File"),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: AppColors.primary,
-                                          side: const BorderSide(color: Color(0xFFDDE3EA)),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      if (_isImageFile(suratPenugasan))
+                                        _SuratThumb(url: _fileUrl(suratPenugasan))
+                                      else
+                                        OutlinedButton.icon(
+                                          onPressed: () => _lihatSuratPenugasan(suratPenugasan),
+                                          icon: const Icon(Icons.description_outlined, size: 16),
+                                          label: const Text("Lihat File"),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.primary,
+                                            side: const BorderSide(color: Color(0xFFDDE3EA)),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ),
                                         ),
-                                      ),
                                       const SizedBox(height: 8),
                                       Container(height: 1, color: const Color(0xFFEFF2F6)),
                                     ],
@@ -801,6 +824,63 @@ class _InfoBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w500))),
         ],
+      ),
+    );
+  }
+}
+
+/// Thumbnail gambar surat penugasan (kalau file-nya berupa gambar, bukan
+/// PDF). Tap untuk buka full-screen dengan InteractiveViewer (bisa
+/// pinch-zoom), sama pola kayak _FotoThumb di detail_laporan_screen.dart.
+class _SuratThumb extends StatelessWidget {
+  final String url;
+  const _SuratThumb({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => showDialog(
+        context: context,
+        // Header ngrok wajib disertakan juga di sini, bukan cuma di
+        // thumbnail-nya — dialog full-screen ini bikin request baru yang
+        // terpisah ke Image.network.
+        builder: (_) => Dialog(
+          child: InteractiveViewer(
+            child: Image.network(url, headers: const {'ngrok-skip-browser-warning': 'true'}),
+          ),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: AspectRatio(
+          // Surat/dokumen biasanya orientasi potret (lebih tinggi dari
+          // lebar), beda dari foto kendaraan yang landscape.
+          aspectRatio: 3 / 4,
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            color: AppColors.inputFill,
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              // Header ini wajib supaya ngrok free tier langsung balikin
+              // gambar aslinya, bukan halaman peringatan interstitial.
+              headers: const {'ngrok-skip-browser-warning': 'true'},
+              loadingBuilder: (context, child, progress) => progress == null
+                  ? child
+                  : const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))),
+              errorBuilder: (_, __, ___) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.broken_image_outlined, color: AppColors.textMuted, size: 28),
+                    const SizedBox(height: 4),
+                    Text('Gagal memuat', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
