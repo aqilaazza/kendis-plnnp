@@ -509,7 +509,7 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
     return _buildContactItem(
       icon: Icons.support_agent_outlined,
       title: 'Hubungi Admin',
-      subtitle: 'Chat dengan ${_kontakAdmin!.nama} via WhatsApp',
+      subtitle: 'Chat dengan admin via WhatsApp',
       onTap: _openWhatsApp,
     );
   }
