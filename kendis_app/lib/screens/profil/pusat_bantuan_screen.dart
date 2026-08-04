@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
+import '../../services/faq_service.dart';
 
 class PusatBantuanScreen extends StatefulWidget {
   const PusatBantuanScreen({super.key});
@@ -11,48 +12,47 @@ class PusatBantuanScreen extends StatefulWidget {
 class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
   final _searchController = TextEditingController();
 
-  // ===================================================================
-  // DATA FAQ SEMENTARA
-  // Nanti bisa diganti dengan data dari API
-  // ===================================================================
+  List<FaqModel> _faqs = [];
+  bool _isLoading = true;
+  bool _hasError = false;
 
-  final List<Map<String, String>> _faqs = [
-    {
-      'question': 'Bagaimana cara melihat tugas yang diberikan?',
-      'answer': 'Tugas yang diberikan kepada Anda dapat dilihat melalui halaman Beranda. '
-          'Pilih tugas yang ingin dilihat untuk membuka detail penugasan.',
-    },
-    {
-      'question': 'Bagaimana cara memulai perjalanan?',
-      'answer': 'Buka detail tugas yang sedang aktif, kemudian ikuti instruksi yang tersedia '
-          'pada halaman detail perjalanan.',
-    },
-    {
-      'question': 'Bagaimana cara menyelesaikan tugas?',
-      'answer': 'Setelah perjalanan selesai, buka detail tugas dan lakukan proses penyelesaian '
-          'sesuai dengan langkah yang tersedia pada aplikasi.',
-    },
-    {
-      'question': 'Apa yang harus dilakukan jika terjadi kendala?',
-      'answer': 'Jika mengalami kendala saat menjalankan tugas, silakan hubungi admin atau '
-          'pihak yang bertanggung jawab untuk mendapatkan bantuan lebih lanjut.',
-    },
-    {
-      'question': 'Bagaimana cara mengubah nomor HP?',
-      'answer': 'Buka menu Profil, pilih Edit Profil, kemudian ubah nomor HP pada bagian '
-          'Informasi Kontak dan tekan tombol Simpan Perubahan.',
-    },
-    {
-      'question': 'Bagaimana cara mengganti password?',
-      'answer': 'Buka menu Profil, pilih Ganti Password, kemudian masukkan password lama '
-          'dan password baru Anda.',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadFaqs();
+    _searchController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // ===================================================================
+  // LOAD FAQ DARI API
+  // ===================================================================
+
+  Future<void> _loadFaqs() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final list = await FaqService.getList();
+      if (!mounted) return;
+      setState(() {
+        _faqs = list;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
   }
 
   // ===================================================================
@@ -87,7 +87,7 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
                     // FAQ
                     _sectionLabel('PERTANYAAN UMUM'),
                     const SizedBox(height: 8),
-                    _buildFaqCard(),
+                    _buildFaqSection(),
                     const SizedBox(height: 24),
 
                     // HUBUNGI ADMIN
@@ -189,7 +189,6 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
   Widget _buildSearchField() {
     return TextField(
       controller: _searchController,
-      onChanged: (_) => setState(() {}),
       style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
       decoration: InputDecoration(
         hintText: 'Cari pertanyaan atau bantuan...',
@@ -197,10 +196,7 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
         prefixIcon: const Icon(Icons.search, size: 22, color: AppColors.textMuted),
         suffixIcon: _searchController.text.isNotEmpty
             ? IconButton(
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() {});
-                },
+                onPressed: () => _searchController.clear(),
                 icon: const Icon(Icons.close, size: 20, color: AppColors.textMuted),
               )
             : null,
@@ -224,6 +220,31 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
   }
 
   // ===================================================================
+  // FAQ SECTION (LOADING / ERROR / KONTEN)
+  // ===================================================================
+
+  Widget _buildFaqSection() {
+    if (_isLoading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
+          ],
+        ),
+        child: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    if (_hasError) return _buildFaqErrorState();
+
+    return _buildFaqCard();
+  }
+
+  // ===================================================================
   // FAQ CARD
   // ===================================================================
 
@@ -231,9 +252,8 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
     final searchQuery = _searchController.text.toLowerCase().trim();
 
     final filteredFaqs = _faqs.where((faq) {
-      final question = faq['question']!.toLowerCase();
-      final answer = faq['answer']!.toLowerCase();
-      return question.contains(searchQuery) || answer.contains(searchQuery);
+      return faq.pertanyaan.toLowerCase().contains(searchQuery) ||
+          faq.jawaban.toLowerCase().contains(searchQuery);
     }).toList();
 
     if (filteredFaqs.isEmpty) return _buildEmptySearch();
@@ -250,8 +270,8 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
         children: List.generate(filteredFaqs.length, (index) {
           final faq = filteredFaqs[index];
           return _buildFaqItem(
-            question: faq['question']!,
-            answer: faq['answer']!,
+            question: faq.pertanyaan,
+            answer: faq.jawaban,
             isLast: index == filteredFaqs.length - 1,
           );
         }),
@@ -331,6 +351,53 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
     );
   }
 
+  // ===================================================================
+  // FAQ ERROR STATE
+  // ===================================================================
+
+  Widget _buildFaqErrorState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, size: 32, color: AppColors.danger.withOpacity(0.7)),
+          const SizedBox(height: 10),
+          const Text(
+            'Gagal memuat pertanyaan',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Periksa koneksi internet Anda.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 36,
+            child: ElevatedButton(
+              onPressed: _loadFaqs,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Coba Lagi', style: TextStyle(fontSize: 12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------
   // Judul section + kartu kontak admin (gaya tile, sama seperti menu lain)
   // ---------------------------------------------------------------------
@@ -360,7 +427,7 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
         title: 'Hubungi Admin',
         subtitle: 'Dapatkan bantuan dari admin aplikasi',
         onTap: () {
-          // TODO: arahkan ke WhatsApp / telepon admin
+          // TODO: arahkan ke WhatsApp / telepon admin (menyusul, dari database kontak_admin)
         },
       ),
     );
