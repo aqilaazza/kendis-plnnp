@@ -40,8 +40,8 @@ if ((int) $penugasan['is_berangkat'] === 1) {
     jsonError('Perjalanan sudah dimulai sebelumnya', 400);
 }
 
-// Pastikan kendaraan yang dipilih benar-benar masih tersedia (mencegah dua
-// driver pilih kendaraan yang sama nyaris bersamaan).
+// Ambil data kendaraan terbaru dari database (bukan cuma percaya id dari
+// request) supaya statusnya akurat.
 $kendaraanStmt = $pdo->prepare("SELECT * FROM kendaraan WHERE id = :id LIMIT 1");
 $kendaraanStmt->execute(['id' => $idKendaraan]);
 $kendaraan = $kendaraanStmt->fetch();
@@ -49,8 +49,14 @@ $kendaraan = $kendaraanStmt->fetch();
 if (!$kendaraan) {
     jsonError('Kendaraan tidak ditemukan', 404);
 }
-if ($kendaraan['status'] !== 'tersedia') {
-    jsonError('Kendaraan tersebut sudah tidak tersedia, silakan pilih kendaraan lain', 409);
+// Kendaraan cuma ditolak kalau statusnya servis/maintenance (rusak/gak
+// bisa dipakai secara fisik). Status 'digunakan' TIDAK memblokir pemilihan
+// -- ini konsisten sama logic web (get_available_vehicles.php: is_selectable
+// cuma false untuk servis/maintenance). Beberapa driver boleh "berbagi"
+// kendaraan yang sama sesuai keputusan pool kendis, jadi status 'digunakan'
+// di sini cuma penanda informatif, bukan lock eksklusif.
+if (in_array($kendaraan['status'], ['servis', 'maintenance'], true)) {
+    jsonError('Kendaraan sedang servis/maintenance, silakan pilih kendaraan lain', 409);
 }
 
 $pdo->beginTransaction();
