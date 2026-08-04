@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../models/dashboard_model.dart';
+import '../../../services/badge_notifier.dart';
 import '../../notifikasi/notifikasi_screen.dart';
 
 class DashboardHeader extends StatelessWidget {
@@ -62,30 +63,37 @@ class DashboardHeader extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
-                  // Badge notifikasi dari data['notifikasiUnread']
-                  if (data?.notifikasiUnread != null &&
-                      data!.notifikasiUnread! > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: IgnorePointer(
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.danger,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '${data!.notifikasiUnread}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                  // Badge sekarang listen langsung ke BadgeNotifier (bukan
+                  // dari data.notifikasiUnread lagi)
+                  AnimatedBuilder(
+                    animation: BadgeNotifier.instance,
+                    builder: (context, _) {
+                      final unread =
+                          BadgeNotifier.instance.counts.notifikasiBelumDibaca;
+                      if (unread <= 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: 6,
+                        top: 6,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppColors.danger,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$unread',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ],

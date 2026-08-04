@@ -1,15 +1,19 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'badge_service.dart';
 
 class BadgeNotifier extends ChangeNotifier {
-  BadgeNotifier._internal();
+  BadgeNotifier._internal() {
+    refresh();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => refresh());
+  }
   static final BadgeNotifier instance = BadgeNotifier._internal();
 
   BadgeCounts counts = const BadgeCounts();
   bool _isRefreshing = false;
+  Timer? _timer;
 
   Future<void> refresh() async {
-    // Cegah refresh dobel kalau ke-trigger beruntun (mis. timer + aksi user barengan)
     if (_isRefreshing) return;
     _isRefreshing = true;
     try {
@@ -20,5 +24,11 @@ class BadgeNotifier extends ChangeNotifier {
     } finally {
       _isRefreshing = false;
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }
