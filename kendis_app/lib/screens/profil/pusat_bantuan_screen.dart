@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
 import '../../services/faq_service.dart';
+import '../../services/kontak_admin_service.dart';
 
 class PusatBantuanScreen extends StatefulWidget {
   const PusatBantuanScreen({super.key});
@@ -13,13 +15,18 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
   final _searchController = TextEditingController();
 
   List<FaqModel> _faqs = [];
-  bool _isLoading = true;
-  bool _hasError = false;
+  bool _isLoadingFaq = true;
+  bool _hasErrorFaq = false;
+
+  KontakAdminModel? _kontakAdmin;
+  bool _isLoadingAdmin = true;
+  bool _hasErrorAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _loadFaqs();
+    _loadKontakAdmin();
     _searchController.addListener(() => setState(() {}));
   }
 
@@ -35,8 +42,8 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
 
   Future<void> _loadFaqs() async {
     setState(() {
-      _isLoading = true;
-      _hasError = false;
+      _isLoadingFaq = true;
+      _hasErrorFaq = false;
     });
 
     try {
@@ -44,14 +51,61 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
       if (!mounted) return;
       setState(() {
         _faqs = list;
-        _isLoading = false;
+        _isLoadingFaq = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _isLoading = false;
-        _hasError = true;
+        _isLoadingFaq = false;
+        _hasErrorFaq = true;
       });
+    }
+  }
+
+  // ===================================================================
+  // LOAD KONTAK ADMIN DARI API
+  // ===================================================================
+
+  Future<void> _loadKontakAdmin() async {
+    setState(() {
+      _isLoadingAdmin = true;
+      _hasErrorAdmin = false;
+    });
+
+    try {
+      final data = await KontakAdminService.getKontakAdmin();
+      if (!mounted) return;
+      setState(() {
+        _kontakAdmin = data;
+        _isLoadingAdmin = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingAdmin = false;
+        _hasErrorAdmin = true;
+      });
+    }
+  }
+
+  // ===================================================================
+  // BUKA WHATSAPP
+  // ===================================================================
+
+  Future<void> _openWhatsApp() async {
+    final kontak = _kontakAdmin;
+    if (kontak == null) return;
+
+    final uri = Uri.parse(
+      'https://wa.me/${kontak.nomorWhatsapp}?text=${Uri.encodeComponent(kontak.pesanDefault)}',
+    );
+
+    final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+      );
     }
   }
 
@@ -224,7 +278,7 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
   // ===================================================================
 
   Widget _buildFaqSection() {
-    if (_isLoading) {
+    if (_isLoadingFaq) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -239,7 +293,7 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
       );
     }
 
-    if (_hasError) return _buildFaqErrorState();
+    if (_hasErrorFaq) return _buildFaqErrorState();
 
     return _buildFaqCard();
   }
@@ -422,14 +476,41 @@ class _PusatBantuanScreenState extends State<PusatBantuanScreen> {
           BoxShadow(color: Colors.black.withOpacity(0.035), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
-      child: _buildContactItem(
-        icon: Icons.support_agent_outlined,
-        title: 'Hubungi Admin',
-        subtitle: 'Dapatkan bantuan dari admin aplikasi',
-        onTap: () {
-          // TODO: arahkan ke WhatsApp / telepon admin (menyusul, dari database kontak_admin)
-        },
-      ),
+      child: _buildAdminTileContent(),
+    );
+  }
+
+  // Isi tile kontak admin: kalau lagi loading tampilkan skeleton ringan,
+  // kalau gagal tampilkan pesan singkat (tanpa bikin layar penuh error),
+  // kalau berhasil baru tampilkan nama admin dan bisa ditap ke WhatsApp.
+  Widget _buildAdminTileContent() {
+    if (_isLoadingAdmin) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+          ),
+        ),
+      );
+    }
+
+    if (_hasErrorAdmin || _kontakAdmin == null) {
+      return _buildContactItem(
+        icon: Icons.error_outline,
+        title: 'Gagal memuat kontak admin',
+        subtitle: 'Tap untuk coba lagi',
+        onTap: _loadKontakAdmin,
+      );
+    }
+
+    return _buildContactItem(
+      icon: Icons.support_agent_outlined,
+      title: 'Hubungi Admin',
+      subtitle: 'Chat dengan ${_kontakAdmin!.nama} via WhatsApp',
+      onTap: _openWhatsApp,
     );
   }
 
