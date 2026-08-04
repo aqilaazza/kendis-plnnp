@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
+import '../notifikasi/notifikasi_screen.dart';
 import '../penugasan/penugasan_detail_screen.dart';
 import 'isi_laporan_screen.dart';
 import 'detail_laporan_screen.dart';
@@ -10,7 +11,11 @@ import 'detail_laporan_screen.dart';
 enum _MainTab { perluDiisi, riwayat }
 
 class LaporanScreen extends StatefulWidget {
-  const LaporanScreen({super.key});
+  /// id_request dari notifikasi yang di-tap (kalau screen ini dibuka lewat
+  /// notifikasi). 
+  final int? highlightId;
+
+  const LaporanScreen({super.key, this.highlightId});
 
   @override
   State<LaporanScreen> createState() => _LaporanScreenState();
@@ -21,11 +26,38 @@ class _LaporanScreenState extends State<LaporanScreen> {
   final _searchCtrl = TextEditingController();
   _MainTab _tab = _MainTab.perluDiisi;
 
+  final GlobalKey _highlightKey = GlobalKey();
+  bool _scrolledToHighlight = false;
+
   @override
   void initState() {
     super.initState();
     _future = _loadData();
     _searchCtrl.addListener(() => setState(() {}));
+
+    if (widget.highlightId != null) {
+      _future.then((all) {
+        if (!mounted) return;
+        // PENTING: highlightId yang dikirim dari notifikasi itu adalah
+        // id_request (request_kendis.id)
+        final match = all.where((p) => p.idRequest == widget.highlightId).toList();
+        if (match.isEmpty) return;
+        final autoTab = match.first.sudahLapor ? _MainTab.riwayat : _MainTab.perluDiisi;
+        setState(() => _tab = autoTab);
+        _scrolledToHighlight = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final ctx = _highlightKey.currentContext;
+          if (ctx != null) {
+            Scrollable.ensureVisible(
+              ctx,
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeInOut,
+              alignment: 0.1,
+            );
+          }
+        });
+      });
+    }
   }
 
   @override
@@ -147,7 +179,13 @@ class _LaporanScreenState extends State<LaporanScreen> {
                             ),
                           )
                         else
-                          ...activeList.map((p) => _LaporanCard(penugasan: p)),
+                          // PENTING: dicocokkan ke idRequest (request_kendis.id),
+                          // bukan p.id (penugasan.id) -- lihat catatan di initState.
+                          ...activeList.map((p) => _LaporanCard(
+                                key: p.idRequest == widget.highlightId ? _highlightKey : null,
+                                penugasan: p,
+                                highlighted: p.idRequest == widget.highlightId,
+                              )),
 
                         if (!isLoading && !snapshot.hasError && _tab == _MainTab.riwayat && allData.isNotEmpty) ...[
                           const SizedBox(height: 8),
@@ -184,7 +222,9 @@ class _LaporanScreenState extends State<LaporanScreen> {
           const Spacer(),
           InkWell(
             onTap: () {
-              // TODO: Buka halaman notifikasi
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotifikasiScreen()),
+              );
             },
             borderRadius: BorderRadius.circular(20),
             child: const Padding(
@@ -306,7 +346,12 @@ class _MainTabChips extends StatelessWidget {
 
 class _LaporanCard extends StatelessWidget {
   final PenugasanModel penugasan;
-  const _LaporanCard({required this.penugasan});
+
+  /// True kalau card ini yang dituju dari notifikasi -- dikasih border gold
+  /// + tag "Dari Notifikasi" biar user langsung notice tanpa harus nyari.
+  final bool highlighted;
+
+  const _LaporanCard({super.key, required this.penugasan, this.highlighted = false});
 
   static final _rupiah = NumberFormat.decimalPattern('id_ID');
 
@@ -341,12 +386,36 @@ class _LaporanCard extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: sudahLapor ? null : Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.2),
+              border: highlighted
+                  ? Border.all(color: AppColors.accentGold, width: 2)
+                  : (sudahLapor ? null : Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.2)),
+              color: highlighted ? AppColors.accentGold.withOpacity(0.05) : null,
             ),
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (highlighted) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGold,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.notifications_active, size: 12, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Dari Notifikasi',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 // Baris tanggal + badge status
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

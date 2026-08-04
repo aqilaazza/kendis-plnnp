@@ -5,9 +5,15 @@ import '../../core/app_theme.dart';
 import '../../models/kegiatan_model.dart';
 import '../../services/kegiatan_service.dart';
 import '../../services/badge_notifier.dart';
+import '../notifikasi/notifikasi_screen.dart';
 
 class KegiatanScreen extends StatefulWidget {
-  const KegiatanScreen({super.key});
+  /// id_request dari notifikasi yang di-tap (kalau screen ini dibuka lewat
+  /// notifikasi). Kalau diisi, screen akan scroll ke card kegiatan yang
+  /// sesuai dan kasih highlight visual.
+  final int? highlightId;
+
+  const KegiatanScreen({super.key, this.highlightId});
 
   @override
   State<KegiatanScreen> createState() => _KegiatanScreenState();
@@ -19,6 +25,9 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
   bool _hasError = false;
   final TextEditingController _searchController = TextEditingController();
   int? _userId;
+
+  final GlobalKey _highlightKey = GlobalKey();
+  bool _scrolledToHighlight = false;
 
   @override
   void initState() {
@@ -64,6 +73,7 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
         _isLoading = false;
         _hasError = false;
       });
+      _maybeScrollToHighlight(list);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -72,6 +82,26 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
       });
       if (isInitialLoad == false) _showError('Gagal memuat data terbaru');
     }
+  }
+
+  /// Scroll otomatis ke card kegiatan yang highlightId-nya cocok, sekali
+  /// saja (dijaga oleh `_scrolledToHighlight`).
+  void _maybeScrollToHighlight(List<KegiatanModel> list) {
+    if (widget.highlightId == null || _scrolledToHighlight) return;
+    final found = list.any((k) => k.id == widget.highlightId);
+    if (!found) return;
+    _scrolledToHighlight = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _highlightKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeInOut,
+          alignment: 0.1,
+        );
+      }
+    });
   }
 
   Future<void> _reload() => _loadKegiatan();
@@ -424,7 +454,9 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
           const Spacer(),
           InkWell(
             onTap: () {
-              // TODO: Buka halaman notifikasi
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotifikasiScreen()),
+              );
             },
             borderRadius: BorderRadius.circular(20),
             child: const Padding(
@@ -512,14 +544,18 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
   Widget _buildKegiatanCard(KegiatanModel k) {
     final tugasAnda = _isTugasAnda(k);
     final sudahDiambil = k.idDriver != null;
+    final highlighted = widget.highlightId != null && k.id == widget.highlightId;
 
     return Container(
+      key: highlighted ? _highlightKey : null,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
+        border: highlighted
+            ? Border.all(color: AppColors.accentGold, width: 2)
+            : Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -531,6 +567,27 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (highlighted) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.accentGold,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.notifications_active, size: 12, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    'Dari Notifikasi',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
