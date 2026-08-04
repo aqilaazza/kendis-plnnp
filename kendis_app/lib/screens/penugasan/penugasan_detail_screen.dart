@@ -71,19 +71,12 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
   /// (lihat pilih_kendaraan_screen.dart). Dibuka lewat endpoint file.php
   /// milik kendis_api sendiri, bukan ditebak path fisiknya langsung, supaya
   /// tetap benar walau lokasi folder uploads di server beda.
-  /// NOTE 1: file.php ada di kendis_api/penugasan/file.php (bukan di root
+  /// NOTE: file.php ada di kendis_api/penugasan/file.php (bukan di root
   /// kendis_api), jadi URL-nya WAJIB menyertakan segmen /penugasan/ —
   /// kalau tidak, request 404 sebelum sempat sampai ke file.php sama sekali.
-  /// NOTE 2: kolom `surat_penugasan` di database HANYA berisi nama file
-  /// flat, TIDAK termasuk nama folder. Ini konsisten sama web PHP kendis
-  /// (lihat penugasan_driver.php yang eksplisit menulis
-  /// "uploads/surat_penugasan/" + p.surat_penugasan) — jadi folder
-  /// "surat_penugasan/" harus ditambahkan manual di sini juga, sama
-  /// seperti folder "kendaraan/" di _fotoUrl (pilih_kendaraan_screen.dart).
   static String _fileUrl(String path) {
     if (path.startsWith('http')) return path;
-    final fullPath = path.contains('/') ? path : 'surat_penugasan/$path';
-    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(fullPath)}';
+    return '${AppConfig.baseUrl}/penugasan/file.php?path=${Uri.encodeComponent(path)}';
   }
 
   Future<void> _lihatSuratPenugasan(String suratPenugasan) async {
@@ -434,10 +427,6 @@ class _Header extends StatelessWidget {
               "Detail Penugasan",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary),
             ),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded, size: 26, color: AppColors.primary),
           ),
         ],
       ),
