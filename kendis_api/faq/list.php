@@ -19,7 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             pertanyaan,
             jawaban
         FROM faq
-        WHERE is_active = 1
         ORDER BY urutan ASC, id ASC"
     );
 
