@@ -12,7 +12,9 @@ enum _MainTab { perluDiisi, riwayat }
 
 class LaporanScreen extends StatefulWidget {
   /// id_request dari notifikasi yang di-tap (kalau screen ini dibuka lewat
-  /// notifikasi). 
+  /// notifikasi). Kalau diisi, screen otomatis pindah ke tab yang sesuai
+  /// (Perlu Diisi / Riwayat tergantung status laporan-nya), scroll ke card
+  /// tersebut, dan kasih highlight visual.
   final int? highlightId;
 
   const LaporanScreen({super.key, this.highlightId});
@@ -36,10 +38,16 @@ class _LaporanScreenState extends State<LaporanScreen> {
     _searchCtrl.addListener(() => setState(() {}));
 
     if (widget.highlightId != null) {
+      // Begitu data pertama datang, tentukan tab yang tepat berdasarkan
+      // status laporan item yang dituju (belum diisi -> tab Perlu Diisi,
+      // sudah diisi -> tab Riwayat), baru dilanjut scroll ke card-nya.
       _future.then((all) {
         if (!mounted) return;
         // PENTING: highlightId yang dikirim dari notifikasi itu adalah
-        // id_request (request_kendis.id)
+        // id_request (request_kendis.id) -- BUKAN penugasan.id. Dua tabel
+        // ini sama-sama auto-increment angka, jadi kalau salah dibandingkan
+        // ke p.id, bisa "ketuker" nyasar ke penugasan lain yang p.id-nya
+        // kebetulan sama dengan id_request yang dituju.
         final match = all.where((p) => p.idRequest == widget.highlightId).toList();
         if (match.isEmpty) return;
         final autoTab = match.first.sudahLapor ? _MainTab.riwayat : _MainTab.perluDiisi;
@@ -217,6 +225,17 @@ class _LaporanScreenState extends State<LaporanScreen> {
       ),
       child: Row(
         children: [
+          // Tombol kembali -- cuma muncul kalau screen ini dibuka lewat
+          // push (mis. dari notifikasi), bukan waktu jadi tab utama di
+          // bottom nav. Sama seperti pola di PenugasanListScreen.
+          if (Navigator.of(context).canPop())
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          if (Navigator.of(context).canPop()) const SizedBox(width: 8),
           const Text('Riwayat Pelaporan',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
           const Spacer(),

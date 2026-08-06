@@ -6,9 +6,11 @@ import '../../services/penugasan_service.dart';
 import '../notifikasi/notifikasi_screen.dart';
 import 'penugasan_detail_screen.dart';
 
+/// Berapa lama border+background highlight tetap menyala sebelum pudar.
+const Duration _kHighlightDuration = Duration(seconds: 4);
+
 class PenugasanListScreen extends StatefulWidget {
-  /// id_request dari notifikasi yang di-tap (kalau screen ini dibuka lewat
-  /// notifikasi).
+  /// id_request dari notifikasi (kalau screen ini dibuka lewat notifikasi).
   final int? highlightId;
 
   const PenugasanListScreen({super.key, this.highlightId});
@@ -32,6 +34,12 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   final GlobalKey _highlightKey = GlobalKey();
   bool _scrolledToHighlight = false;
 
+  /// Kontrol tampil/pudarnya border+bg highlight (terpisah dari
+  /// widget.highlightId supaya scroll-matching tetap jalan walau glow-nya
+  /// udah pudar).
+  bool _highlightGlowVisible = false;
+  Timer? _highlightFadeTimer;
+
   @override
   void initState() {
     super.initState();
@@ -40,13 +48,27 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
     _filter = widget.highlightId != null ? 'semua' : 'aktif';
     _loadAll();
     _searchCtrl.addListener(_onSearchChanged);
+
+    if (widget.highlightId != null) {
+      _highlightGlowVisible = true;
+      _scheduleHighlightFadeOut();
+    }
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _highlightFadeTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _scheduleHighlightFadeOut() {
+    _highlightFadeTimer?.cancel();
+    _highlightFadeTimer = Timer(_kHighlightDuration, () {
+      if (!mounted) return;
+      setState(() => _highlightGlowVisible = false);
+    });
   }
 
   /// Load ulang list (sesuai filter+search aktif), ringkasan bulan ini, dan
@@ -134,6 +156,20 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        // Tombol kembali -- cuma muncul kalau screen ini
+                        // dibuka lewat push (mis. dari notifikasi), bukan
+                        // waktu jadi tab utama di bottom nav.
+                        if (Navigator.of(context).canPop())
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: AppColors.textPrimary,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        if (Navigator.of(context).canPop()) const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
                             "Riwayat Penugasan",
@@ -303,7 +339,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                     // (penugasan.id) -- lihat catatan di _maybeScrollToHighlight.
                                     key: p.idRequest == widget.highlightId ? _highlightKey : null,
                                     penugasan: p,
-                                    highlighted: p.idRequest == widget.highlightId,
+                                    highlighted: _highlightGlowVisible && p.idRequest == widget.highlightId,
                                   ),
                               ],
                             ),
@@ -474,8 +510,11 @@ class _SummaryStat extends StatelessWidget {
 class _PenugasanTile extends StatelessWidget {
   final PenugasanModel penugasan;
 
-  /// True kalau card ini yang dituju dari notifikasi -- dikasih border gold
-  /// + tag "Dari Notifikasi" biar user langsung notice tanpa harus nyari.
+  /// True kalau card ini yang dituju dari notifikasi DAN glow-nya belum
+  /// pudar -- dikasih border gold + tag "Dari Notifikasi". Otomatis jadi
+  /// false lagi setelah beberapa detik (lihat _scheduleHighlightFadeOut di
+  /// parent), dan AnimatedContainer di bawah yang bikin transisinya halus,
+  /// bukan hilang tiba-tiba.
   final bool highlighted;
 
   const _PenugasanTile({
@@ -547,40 +586,55 @@ class _PenugasanTile extends StatelessWidget {
               ),
             );
           },
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: highlighted
-                  ? Border.all(color: AppColors.accentGold, width: 2)
-                  : null,
-              color: highlighted ? AppColors.accentGold.withOpacity(0.05) : null,
+              // Border & warna selalu "ada", cuma warnanya transparan kalau
+              // nggak highlighted -- supaya AnimatedContainer bisa nge-lerp
+              // transisinya jadi pudar halus, bukan muncul/hilang instan.
+              border: Border.all(
+                color: highlighted ? AppColors.accentGold : Colors.transparent,
+                width: 2,
+              ),
+              color: highlighted ? AppColors.accentGold.withOpacity(0.05) : Colors.transparent,
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (highlighted) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentGold,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.notifications_active, size: 12, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          'Dari Notifikasi',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: highlighted
+                      ? Column(
+                          key: const ValueKey('highlight-tag'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentGold,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.notifications_active, size: 12, color: Colors.white),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Dari Notifikasi',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        )
+                      : const SizedBox(key: ValueKey('no-tag'), width: double.infinity),
+                ),
                 /// ================= HEADER: icon + tanggal/kode + status =================
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
