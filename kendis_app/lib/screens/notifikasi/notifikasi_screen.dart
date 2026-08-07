@@ -53,10 +53,14 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: _tabs.indexOf('belum_dibaca'),
+    );
     for (final filter in _tabs) {
       _loadData(filter);
-    }
+}
   }
 
   @override
