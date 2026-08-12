@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
-import '../../services/nav_controller.dart'; // sesuaikan path sesuai lokasi file di project kamu
+import '../notifikasi/notifikasi_screen.dart';
 import 'penugasan_detail_screen.dart';
 
+/// Berapa lama border+background highlight tetap menyala sebelum pudar.
+const Duration _kHighlightDuration = Duration(seconds: 4);
+
 class PenugasanListScreen extends StatefulWidget {
+  /// id_request dari notifikasi (kalau screen ini dibuka lewat notifikasi).
   final int? highlightId;
 
   const PenugasanListScreen({super.key, this.highlightId});
@@ -16,58 +21,108 @@ class PenugasanListScreen extends StatefulWidget {
 
 class _PenugasanListScreenState extends State<PenugasanListScreen> {
   // NOTE: Figma menggunakan filter berbasis waktu (Semua / Minggu Ini / Bulan
-  // Ini), bukan filter status. Jika backend masih mengharapkan status
-  // (semua/menunggu/diproses/selesai), sesuaikan value di bawah ini dengan
-  // yang didukung PenugasanService.getList().
+  // Ini), bukan filter status. 
   late String _filter;
   late Future<List<PenugasanModel>> _future;
   late Future<Map<String, dynamic>> _ringkasanFuture;
   late Future<int> _aktifCountFuture;
 
-  /// Key per item (di-index oleh idRequest), dipakai untuk auto-scroll ke
-  /// item yang di-highlight waktu screen dibuka dari notifikasi.
-  final Map<int, GlobalKey> _tileKeys = {};
-  bool _hasScrolledToHighlight = false;
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+
+  /// Key buat auto-scroll ke card yang di-highlight dari notifikasi.
+  final GlobalKey _highlightKey = GlobalKey();
+  bool _scrolledToHighlight = false;
+
+  /// Kontrol tampil/pudarnya border+bg highlight (terpisah dari
+  /// widget.highlightId supaya scroll-matching tetap jalan walau glow-nya
+  /// udah pudar).
+  bool _highlightGlowVisible = false;
+  Timer? _highlightFadeTimer;
 
   @override
   void initState() {
     super.initState();
-    // Kalau dibuka dengan highlightId (dari notifikasi), paksa filter ke
-    // 'semua' -- item yang di-highlight bisa berstatus apa saja, belum
-    // tentu masuk kriteria 'aktif' (default screen ini).
+    // Kalau datang dari notifikasi, mulai dari filter 'semua' supaya item
+    // yang dituju pasti muncul di list, apapun statusnya.
     _filter = widget.highlightId != null ? 'semua' : 'aktif';
-    _future = PenugasanService.getList(status: _filter);
-    // getRingkasan() sekarang sudah ada di PenugasanService (menyambung ke
-    // endpoint ringkasan.php yang baru).
+    _loadAll();
+    _searchCtrl.addListener(_onSearchChanged);
+
+    if (widget.highlightId != null) {
+      _highlightGlowVisible = true;
+      _scheduleHighlightFadeOut();
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _highlightFadeTimer?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scheduleHighlightFadeOut() {
+    _highlightFadeTimer?.cancel();
+    _highlightFadeTimer = Timer(_kHighlightDuration, () {
+      if (!mounted) return;
+      setState(() => _highlightGlowVisible = false);
+    });
+  }
+
+  /// Load ulang list (sesuai filter+search aktif), ringkasan bulan ini, dan
+  /// badge count "Aktif" — dipanggil dari initState, RefreshIndicator, ganti
+  /// filter, maupun search.
+  void _loadAll() {
+    _future = PenugasanService.getList(status: _filter, search: _searchCtrl.text);
     _ringkasanFuture = PenugasanService.getRingkasan();
     // Jumlah data untuk badge chip "Aktif" — diambil terpisah supaya angkanya
     // tetap tampil walaupun user sedang berada di filter Semua/Selesai.
-    _aktifCountFuture =
-        PenugasanService.getList(status: 'aktif').then((l) => l.length);
-
-    // Dengarkan "titipan" filter dari luar (mis. tombol "Lihat Detail" di
-    // dashboard yang minta screen ini dibuka dengan filter 'semua').
-    // Diperlukan karena screen ini persist di IndexedStack, jadi tidak
-    // dibuat ulang tiap kali tab-nya dikunjungi.
-    NavController.instance.pendingTugasFilter.addListener(_onFilterRequested);
-    // Cek juga kalau sudah ada titipan filter saat widget ini pertama kali
-    // dibuat (misal langsung dibuka dengan filter tertentu).
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onFilterRequested());
+    // Sengaja tidak ikut search, biar badge selalu menunjukkan total aktif.
+    _aktifCountFuture = PenugasanService.getList(status: 'aktif').then((l) => l.length);
   }
 
-  /// Scroll otomatis ke item yang idRequest-nya cocok dengan
-  /// widget.highlightId, dipanggil setelah data list selesai di-render.
-  void _maybeScrollToHighlight() {
-    if (widget.highlightId == null || _hasScrolledToHighlight) return;
-    final key = _tileKeys[widget.highlightId];
-    if (key?.currentContext == null) return;
-    _hasScrolledToHighlight = true;
+  /// Dipanggil oleh RefreshIndicator (tarik ke bawah untuk refresh).
+  Future<void> _onRefresh() async {
+    setState(_loadAll);
+    await _future;
+  }
+
+  void _onSearchChanged() {
+    // Debounce 400ms supaya tidak nembak API tiap kali user mengetik satu
+    // huruf — request baru dikirim setelah user berhenti mengetik sejenak.
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() {
+        _future = PenugasanService.getList(status: _filter, search: _searchCtrl.text);
+      });
+    });
+  }
+
+  void _setFilter(String filter) {
+    setState(() {
+      _filter = filter;
+      _future = PenugasanService.getList(status: filter, search: _searchCtrl.text);
+    });
+  }
+
+  /// Scroll otomatis ke card yang highlightId-nya cocok, sekali saja
+  /// (dijaga oleh `_scrolledToHighlight`).
+  void _maybeScrollToHighlight(List<PenugasanModel> list) {
+    if (widget.highlightId == null || _scrolledToHighlight) return;
+    // PENTING: highlightId yang dikirim dari notifikasi itu adalah
+    // id_request (request_kendis.id)
+    final found = list.any((p) => p.idRequest == widget.highlightId);
+    if (!found) return;
+    _scrolledToHighlight = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = key!.currentContext;
+      final ctx = _highlightKey.currentContext;
       if (ctx != null) {
         Scrollable.ensureVisible(
           ctx,
-          duration: const Duration(milliseconds: 400),
+          duration: const Duration(milliseconds: 450),
           curve: Curves.easeInOut,
           alignment: 0.1,
         );
@@ -76,52 +131,45 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
   }
 
   @override
-  void dispose() {
-    NavController.instance.pendingTugasFilter
-        .removeListener(_onFilterRequested);
-    super.dispose();
-  }
-
-  void _onFilterRequested() {
-    final requested = NavController.instance.pendingTugasFilter.value;
-    if (requested != null && requested != _filter && mounted) {
-      _setFilter(requested);
-    }
-    if (requested != null) {
-      // Reset supaya tidak "nempel" dan trigger ulang di kunjungan berikutnya
-      // kalau nilainya kebetulan sama.
-      NavController.instance.pendingTugasFilter.value = null;
-    }
-  }
-
-  void _setFilter(String filter) {
-    setState(() {
-      _filter = filter;
-      _future = PenugasanService.getList(status: filter);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // PENTING: Dibungkus dengan Scaffold agar TextField dan Material Widget lainnya tidak error
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Container(
           width: double.infinity,
-          color: AppColors.background,
           child: Column(
             children: [
               /// HEADER
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                color: Colors.white,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey.shade200,
+                    ),
+                  ),
+                ),
                 child: Column(
                   children: [
                     /// Judul - Notifikasi
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        // Tombol kembali -- cuma muncul kalau screen ini
+                        // dibuka lewat push (mis. dari notifikasi), bukan
+                        // waktu jadi tab utama di bottom nav.
+                        if (Navigator.of(context).canPop())
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: AppColors.textPrimary,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        if (Navigator.of(context).canPop()) const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
                             "Riwayat Penugasan",
@@ -134,11 +182,8 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                         ),
                         IconButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Membuka Notifikasi...'),
-                                duration: Duration(seconds: 1),
-                              ),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const NotifikasiScreen()),
                             );
                           },
                           icon: const Icon(
@@ -167,88 +212,13 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
               ),
 
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  child: Column(
+                child: RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(bottom: 100),
+                    child: Column(
                     children: [
-                      const SizedBox(height: 16),
-
-                      /// ================= BANNER (image + overlay) =================
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: SizedBox(
-                            height: 150,
-                            width: double.infinity,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                // Ganti path asset sesuai gambar armada yang tersedia.
-                                Image.asset(
-                                  'assets/images/penugasan_screen.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stack) =>
-                                      Container(
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.black.withOpacity(.15),
-                                        Colors.black.withOpacity(.75),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: const [
-                                      Text(
-                                        "PLN NUSANTARA POWER UP PAITON",
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: .5,
-                                        ),
-                                      ),
-                                      SizedBox(height: 6),
-                                      Text(
-                                        "Kualitas Armada Nomor Satu",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                      SizedBox(height: 6),
-                                      Text(
-                                        "Mendukung operasional pembangkit listrik dengan armada kendaraan yang...",
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
                       const SizedBox(height: 16),
 
                       /// ================= FILTER (waktu) =================
@@ -295,15 +265,21 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: TextField(
+                          controller: _searchCtrl,
                           decoration: InputDecoration(
                             hintText: "Cari laporan...",
                             prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchCtrl.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.close, size: 18),
+                                    onPressed: () => _searchCtrl.clear(),
+                                  ),
                             filled: true,
                             fillColor: const Color(0xFFF5F7FA),
                             prefixIconColor: Colors.grey,
                             isDense: true,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15),
                               borderSide: BorderSide.none,
@@ -326,8 +302,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                       FutureBuilder<List<PenugasanModel>>(
                         future: _future,
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 40),
                               child: Center(child: CircularProgressIndicator()),
@@ -336,9 +311,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                           if (snapshot.hasError) {
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 40),
-                              child: Center(
-                                  child:
-                                      Text('Gagal memuat: ${snapshot.error}')),
+                              child: Center(child: Text('Gagal memuat: ${snapshot.error}')),
                             );
                           }
                           final list = snapshot.data ?? [];
@@ -353,21 +326,20 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                               ),
                             );
                           }
-                          // Siapkan/panggil scroll-to-highlight setelah frame
-                          // ini selesai dirender (key sudah terpasang).
-                          WidgetsBinding.instance.addPostFrameCallback(
-                              (_) => _maybeScrollToHighlight());
+
+                          _maybeScrollToHighlight(list);
+
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
                               children: [
                                 for (final p in list)
                                   _PenugasanTile(
-                                    key: _tileKeys.putIfAbsent(
-                                        p.idRequest, () => GlobalKey()),
+                                    // Dicocokkan ke idRequest (request_kendis.id), bukan p.id
+                                    // (penugasan.id) -- lihat catatan di _maybeScrollToHighlight.
+                                    key: p.idRequest == widget.highlightId ? _highlightKey : null,
                                     penugasan: p,
-                                    isHighlighted: widget.highlightId != null &&
-                                        p.idRequest == widget.highlightId,
+                                    highlighted: _highlightGlowVisible && p.idRequest == widget.highlightId,
                                   ),
                               ],
                             ),
@@ -380,8 +352,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 18, horizontal: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(20),
@@ -403,10 +374,8 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                 future: _ringkasanFuture,
                                 builder: (context, snap) {
                                   final r = snap.data;
-                                  final jumlahLaporan =
-                                      r?['jumlah_laporan']?.toString() ?? '-';
-                                  final totalKm =
-                                      r?['total_km']?.toString() ?? '-';
+                                  final jumlahLaporan = r?['jumlah_laporan']?.toString() ?? '-';
+                                  final totalKm = r?['total_km']?.toString() ?? '-';
                                   final totalRupiah = r?['total_rupiah'];
                                   final totalRpLabel = totalRupiah == null
                                       ? '-'
@@ -414,17 +383,11 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                           ? '${(totalRupiah / 1000000).toStringAsFixed(1)}jt'
                                           : '${(totalRupiah / 1000).round()}rb';
                                   return Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceAround,
+                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                                     children: [
-                                      _SummaryStat(
-                                          value: jumlahLaporan,
-                                          label: "LAPORAN"),
-                                      _SummaryStat(
-                                          value: totalKm, label: "KM JARAK"),
-                                      _SummaryStat(
-                                          value: totalRpLabel,
-                                          label: "TOTAL RP"),
+                                      _SummaryStat(value: jumlahLaporan, label: "LAPORAN"),
+                                      _SummaryStat(value: totalKm, label: "KM JARAK"),
+                                      _SummaryStat(value: totalRpLabel, label: "TOTAL RP"),
                                     ],
                                   );
                                 },
@@ -434,6 +397,7 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                         ),
                       ),
                     ],
+                  ),
                   ),
                 ),
               ),
@@ -470,9 +434,7 @@ class _FilterChip extends StatelessWidget {
           color: isSelected ? AppColors.primary.withOpacity(.08) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary.withOpacity(.35)
-                : const Color(0xFFE8EDF2),
+            color: isSelected ? AppColors.primary.withOpacity(.35) : const Color(0xFFE8EDF2),
           ),
         ),
         child: Row(
@@ -547,12 +509,18 @@ class _SummaryStat extends StatelessWidget {
 
 class _PenugasanTile extends StatelessWidget {
   final PenugasanModel penugasan;
-  final bool isHighlighted;
+
+  /// True kalau card ini yang dituju dari notifikasi DAN glow-nya belum
+  /// pudar -- dikasih border gold + tag "Dari Notifikasi". Otomatis jadi
+  /// false lagi setelah beberapa detik (lihat _scheduleHighlightFadeOut di
+  /// parent), dan AnimatedContainer di bawah yang bikin transisinya halus,
+  /// bukan hilang tiba-tiba.
+  final bool highlighted;
 
   const _PenugasanTile({
     super.key,
     required this.penugasan,
-    this.isHighlighted = false,
+    this.highlighted = false,
   });
 
   Color get _statusColor {
@@ -602,16 +570,9 @@ class _PenugasanTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: isHighlighted
-          ? BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.accentGold, width: 2.5),
-            )
-          : null,
-      padding: isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
       child: Material(
         color: Colors.white,
-        elevation: isHighlighted ? 4 : 2,
+        elevation: 2,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
@@ -625,11 +586,55 @@ class _PenugasanTile extends StatelessWidget {
               ),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              // Border & warna selalu "ada", cuma warnanya transparan kalau
+              // nggak highlighted -- supaya AnimatedContainer bisa nge-lerp
+              // transisinya jadi pudar halus, bukan muncul/hilang instan.
+              border: Border.all(
+                color: highlighted ? AppColors.accentGold : Colors.transparent,
+                width: 2,
+              ),
+              color: highlighted ? AppColors.accentGold.withOpacity(0.05) : Colors.transparent,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: highlighted
+                      ? Column(
+                          key: const ValueKey('highlight-tag'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentGold,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.notifications_active, size: 12, color: Colors.white),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Dari Notifikasi',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        )
+                      : const SizedBox(key: ValueKey('no-tag'), width: double.infinity),
+                ),
                 /// ================= HEADER: icon + tanggal/kode + status =================
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,8 +721,7 @@ class _PenugasanTile extends StatelessWidget {
                     if ((penugasan.lokasiTujuan ?? '').isNotEmpty) ...[
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Icon(Icons.arrow_forward,
-                            size: 16, color: AppColors.primary),
+                        child: Icon(Icons.arrow_forward, size: 16, color: AppColors.primary),
                       ),
                       Expanded(
                         child: Text(
@@ -750,8 +754,7 @@ class _PenugasanTile extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             penugasan.namaPemohon ?? '-',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -767,8 +770,7 @@ class _PenugasanTile extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            (penugasan.nopol == null &&
-                                    penugasan.merkKendaraan == null)
+                            (penugasan.nopol == null && penugasan.merkKendaraan == null)
                                 ? '-'
                                 : "${penugasan.nopol ?? '-'} (${penugasan.merkKendaraan ?? '-'})",
                             style: const TextStyle(
@@ -802,20 +804,17 @@ class _PenugasanTile extends StatelessWidget {
                     Expanded(
                       child: _InfoBox(
                         title: "BERANGKAT",
-                        value:
-                            "${penugasan.tanggalBerangkat}, ${penugasan.jamBerangkat}",
+                        value: "${penugasan.tanggalBerangkat}, ${penugasan.jamBerangkat}",
                       ),
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(Icons.arrow_forward,
-                          size: 16, color: Colors.grey),
+                      child: Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
                     ),
                     Expanded(
                       child: _InfoBox(
                         title: "KEMBALI",
-                        value: (penugasan.tanggalKembali == null &&
-                                penugasan.jamKembali == null)
+                        value: (penugasan.tanggalKembali == null && penugasan.jamKembali == null)
                             ? "-"
                             : "${penugasan.tanggalKembali ?? '-'}, ${penugasan.jamKembali ?? '-'}",
                       ),
@@ -845,11 +844,9 @@ class _PenugasanTile extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textBody,
                           side: const BorderSide(color: Color(0xFFDDE3EA)),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          textStyle: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -872,17 +869,16 @@ class _PenugasanTile extends StatelessWidget {
                           backgroundColor: const Color(0xFF8A6D1E),
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          textStyle: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
                   ],
                 ),
               ],
+              ),
             ),
           ),
         ),
