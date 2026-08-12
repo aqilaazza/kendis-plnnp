@@ -143,7 +143,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                         return Expanded(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => setState(() => _currentIndex = index),
+                            onTap: () => NavController.instance.goTo(index),
                             child: const SizedBox.expand(),
                           ),
                         );
@@ -160,7 +160,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
           Positioned(
             top: 0,
             child: GestureDetector(
-              onTap: () => setState(() => _currentIndex = _centerIndex),
+              onTap: () => NavController.instance.goTo(_centerIndex),
               child: _NotificationBadge(
                 count: _badgeCountFor(_centerIndex),
                 large: true,
@@ -223,7 +223,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
     final badgeCount = _badgeCountFor(index);
 
     return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () => NavController.instance.goTo(index),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

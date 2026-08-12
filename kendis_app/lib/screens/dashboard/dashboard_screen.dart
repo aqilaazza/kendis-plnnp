@@ -11,7 +11,7 @@ import 'widgets/cost_chart_card.dart';
 import 'widgets/dashboard_header.dart';
 import 'widgets/stats_duo_card.dart';
 import 'widgets/top_cities_card.dart';
-import '../../widgets/penugasan_notification_sheet.dart';
+import '../../models/penugasan_menunggu_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -100,15 +100,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final userName = user?.nama ?? 'Driver';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: _provider.refresh,
-          child: _buildBody(userName),
+  backgroundColor: const Color(0xFFF5F7F8),
+  body: SafeArea(
+    child: RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _provider.refresh,
+      child: _buildBody(userName),
+    ),
+  ),
+  // ⚠️ SEMENTARA UNTUK TESTING -- hapus tombol ini setelah selesai coba popup
+  floatingActionButton: FloatingActionButton.extended(
+    onPressed: () {
+      PenugasanNotificationSheet.show(
+        context: context,
+        penugasan: PenugasanMenungguModel(
+          id: 999,
+          kodeRequest: 'PTN-20260805-TEST',
+          isUrgent: true,
+          lokasiTujuan: 'Kantor Pusat',
+          tempatTujuan: 'SURABAYA',
+          tanggalBerangkat: '2026-08-10',
+          jamBerangkat: '08:00:00',
+          status: 'menunggu',
         ),
-      ),
-    );
+        onAccept: () async {
+          await Future.delayed(const Duration(seconds: 1));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Test: Tugas diterima!')),
+            );
+          }
+          return true;
+        },
+      );
+    },
+    label: const Text('Test Popup'),
+    icon: const Icon(Icons.notifications_active),
+    backgroundColor: Colors.orange,
+  ),
+);
   }
 
   Widget _buildBody(String userName) {

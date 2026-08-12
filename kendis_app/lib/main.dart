@@ -4,8 +4,11 @@ import 'core/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/main_nav/main_nav_screen.dart';
+import 'notifikasi/fcm_service.dart'; // TAMBAHAN
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // TAMBAHAN (wajib sebelum initFCM)
+  await initFCM(); // TAMBAHAN
   runApp(const KendisDriverApp());
 }
 

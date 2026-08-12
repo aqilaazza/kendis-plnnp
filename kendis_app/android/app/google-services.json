@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "407872333550",
+    "project_id": "kendis-driver",
+    "storage_bucket": "kendis-driver.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:407872333550:android:601b119ebc3678161ff5ff",
+        "android_client_info": {
+          "package_name": "com.example.kendis_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfNzHQCoACWQaJyQ1kniLOApyvzbetzxY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -28,8 +28,10 @@ class StatsDuoCard extends StatelessWidget {
             showArrow: true,
             // FIX: sebelumnya Navigator.push ke PenugasanListScreen
             // sebagai halaman baru (bottom nav hilang). Sekarang pindah
-            // tab lewat NavController, bottom nav tetap tampil.
-            onTap: () => NavController.instance.goTo(_tugasTabIndex),
+            // tab lewat NavController, bottom nav tetap tampil, dan
+            // filter di halaman Riwayat Penugasan otomatis diset ke
+            // "Semua" (bukan "Aktif" yang jadi default screen itu).
+            onTap: () => NavController.instance.goToTugas(filter: 'semua'),
           ),
         ),
         const SizedBox(width: 12),
@@ -44,7 +46,7 @@ class StatsDuoCard extends StatelessWidget {
             color: AppColors.success,
             sublabel: 'Minggu ini',
             showArrow: false,
-            onTap: () => NavController.instance.goTo(_tugasTabIndex),
+            onTap: () => NavController.instance.goToTugas(filter: 'semua'),
           ),
         ),
       ],

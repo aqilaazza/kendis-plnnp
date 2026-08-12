@@ -11,12 +11,18 @@ class NavController {
 
   final ValueNotifier<int> currentIndex = ValueNotifier<int>(0);
 
-  /// Sinyal buat LaporanScreen: kalau true, begitu tab Laporan dibuka lewat
-  /// goTo()/goToLaporanRiwayat(), dia langsung pindah ke sub-tab "Riwayat"
-  /// (bukan default "Perlu Diisi"). LaporanScreen yang reset ini balik ke
-  /// false setelah dikonsumsi, supaya tap manual di bottom nav "Laporan"
-  /// tetap buka default "Perlu Diisi" seperti biasa.
-  final ValueNotifier<bool> laporanJumpToRiwayat = ValueNotifier<bool>(false);
+  /// "Titipan" filter untuk PenugasanListScreen (tab Tugas). Karena
+  /// screen itu persist di dalam IndexedStack (tidak dibuat ulang
+  /// tiap pindah tab), filter awalnya akan tetap nempel kalau kita
+  /// cuma pindah tab biasa. Nilai ini dipakai untuk memberi tahu
+  /// PenugasanListScreen "tolong ganti filter ke X" tepat sebelum
+  /// pindah ke tab-nya. PenugasanListScreen yang mendengarkan lalu
+  /// mereset nilai ini balik ke null setelah diterapkan.
+  final ValueNotifier<String?> pendingTugasFilter = ValueNotifier<String?>(null);
+
+  /// Sama seperti [pendingTugasFilter], tapi untuk LaporanScreen.
+  /// Nilai yang valid: 'perlu_diisi' atau 'riwayat'.
+  final ValueNotifier<String?> pendingLaporanTab = ValueNotifier<String?>(null);
 
   /// Pindah ke tab dengan index tertentu.
   /// Urutan index sesuai _screens di MainNavScreen:
@@ -25,12 +31,17 @@ class NavController {
     currentIndex.value = index;
   }
 
-  /// Shortcut: pindah ke tab Laporan sekaligus minta dia buka langsung di
-  /// sub-tab "Riwayat" -- dipakai dari AktivitasCard di Dashboard, karena
-  /// datanya (laporan yang sudah dikirim) lebih related ke Riwayat
-  /// daripada "Perlu Diisi".
-  void goToLaporanRiwayat() {
-    laporanJumpToRiwayat.value = true;
+  /// Pindah ke tab Tugas (index 1) sekaligus menerapkan filter
+  /// tertentu di sana (mis. 'semua', 'aktif', 'selesai').
+  void goToTugas({String filter = 'aktif'}) {
+    pendingTugasFilter.value = filter;
+    goTo(1);
+  }
+
+  /// Pindah ke tab Laporan (index 3) sekaligus memilih sub-tab tertentu
+  /// di sana ('perlu_diisi' atau 'riwayat').
+  void goToLaporan({String tab = 'perlu_diisi'}) {
+    pendingLaporanTab.value = tab;
     goTo(3);
   }
 }
