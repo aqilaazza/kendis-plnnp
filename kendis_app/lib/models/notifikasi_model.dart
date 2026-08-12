@@ -2,6 +2,9 @@ class NotifikasiModel {
   final int id;
   final int? idRequest;
 
+  /// id kegiatan (hanya terisi untuk notifikasi kategori 'kegiatan').
+  final int? idKegiatan;
+
   final String? kategori;
 
   final String? tipe;
@@ -15,6 +18,7 @@ class NotifikasiModel {
   const NotifikasiModel({
     required this.id,
     required this.idRequest,
+    required this.idKegiatan,
     required this.kategori,
     required this.tipe,
     required this.judul,
@@ -29,6 +33,9 @@ class NotifikasiModel {
       idRequest: json['id_request'] == null
           ? null
           : int.tryParse(json['id_request'].toString()),
+      idKegiatan: json['id_kegiatan'] == null
+          ? null
+          : int.tryParse(json['id_kegiatan'].toString()),
       kategori: json['kategori'] as String?,
       tipe: json['tipe'] as String?,
       judul: json['judul']?.toString() ?? '',

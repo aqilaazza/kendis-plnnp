@@ -449,6 +449,15 @@ class _KegiatanScreenState extends State<KegiatanScreen> {
       ),
       child: Row(
         children: [
+          // Tombol kembali 
+          if (Navigator.of(context).canPop())
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          if (Navigator.of(context).canPop()) const SizedBox(width: 8),
           const Text('Kegiatan Harian',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
           const Spacer(),
