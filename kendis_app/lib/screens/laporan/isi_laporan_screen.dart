@@ -9,6 +9,7 @@ import '../../core/api_client.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/laporan_service.dart';
 import '../../services/badge_notifier.dart'; 
+import '../../utils/image_compressor.dart';
 import 'laporan_sukses_screen.dart';
 
 final _idRupiah = NumberFormat.decimalPattern('id_ID');
@@ -228,9 +229,21 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
     if (confirmed == true) _submit();
   }
 
+  //Kompres satu foto sebelum dikirim (jika ada). Gagal kompres => tetap pakai bytes asli supaya submit tidak batal.
+  Future<(Uint8List?, String?)> _preparePhoto(Uint8List? bytes, String? name) async {
+    if (bytes == null || name == null) return (null, null);
+    final compressed = await compressImageBytes(bytes, fallback: bytes);
+    return (compressed, jpegFileName(name));
+  }
+
   Future<void> _submit() async {
     setState(() => _submitting = true);
     try {
+      // Kompres foto bukti dulu biar upload ringan (resize + JPEG quality 50).
+      final (bbmBytes, bbmName) = await _preparePhoto(_fotoBbmBytes, _fotoBbmName);
+      final (parkirBytes, parkirName) = await _preparePhoto(_fotoParkirBytes, _fotoParkirName);
+      final (tolBytes, tolName) = await _preparePhoto(_fotoTolBytes, _fotoTolName);
+
       await LaporanService.submit(
         idPenugasan: widget.penugasan.id,
         literBbm: double.tryParse(_literBbmCtrl.text) ?? 0,
@@ -239,12 +252,12 @@ class _IsiLaporanScreenState extends State<IsiLaporanScreen> {
         rupiahTol: _parseCurrency(_rupiahTolCtrl.text),
         odoStart: int.tryParse(_odoStartCtrl.text) ?? 0,
         odoStop: int.tryParse(_odoStopCtrl.text) ?? 0,
-        fotoBbmBytes: _fotoBbmBytes,
-        fotoBbmName: _fotoBbmName,
-        fotoParkirBytes: _fotoParkirBytes,
-        fotoParkirName: _fotoParkirName,
-        fotoTolBytes: _fotoTolBytes,
-        fotoTolName: _fotoTolName,
+        fotoBbmBytes: bbmBytes,
+        fotoBbmName: bbmName,
+        fotoParkirBytes: parkirBytes,
+        fotoParkirName: parkirName,
+        fotoTolBytes: tolBytes,
+        fotoTolName: tolName,
       );
       BadgeNotifier.instance.refresh(); // <-- TAMBAHAN: laporan baru masuk -> badge Laporan langsung update
       if (!mounted) return;
