@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_theme.dart';
 import '../../models/penugasan_model.dart';
 import '../../services/penugasan_service.dart';
-import '../notifikasi/notifikasi_screen.dart';
+import '../../services/nav_controller.dart'; // sesuaikan path sesuai lokasi file di project kamu
 import '../penugasan/penugasan_detail_screen.dart';
 import 'isi_laporan_screen.dart';
 import 'detail_laporan_screen.dart';
@@ -11,8 +11,6 @@ import 'detail_laporan_screen.dart';
 enum _MainTab { perluDiisi, riwayat }
 
 class LaporanScreen extends StatefulWidget {
-  /// id_request dari notifikasi yang di-tap (kalau screen ini dibuka lewat
-  /// notifikasi). 
   final int? highlightId;
 
   const LaporanScreen({super.key, this.highlightId});
@@ -26,8 +24,10 @@ class _LaporanScreenState extends State<LaporanScreen> {
   final _searchCtrl = TextEditingController();
   _MainTab _tab = _MainTab.perluDiisi;
 
-  final GlobalKey _highlightKey = GlobalKey();
-  bool _scrolledToHighlight = false;
+  /// Key per item (di-index oleh idRequest), dipakai untuk auto-scroll ke
+  /// item yang di-highlight waktu screen dibuka dari notifikasi.
+  final Map<int, GlobalKey> _tileKeys = {};
+  bool _hasScrolledToHighlight = false;
 
   @override
   void initState() {
@@ -35,35 +35,65 @@ class _LaporanScreenState extends State<LaporanScreen> {
     _future = _loadData();
     _searchCtrl.addListener(() => setState(() {}));
 
-    if (widget.highlightId != null) {
-      _future.then((all) {
-        if (!mounted) return;
-        // PENTING: highlightId yang dikirim dari notifikasi itu adalah
-        // id_request (request_kendis.id)
-        final match = all.where((p) => p.idRequest == widget.highlightId).toList();
-        if (match.isEmpty) return;
-        final autoTab = match.first.sudahLapor ? _MainTab.riwayat : _MainTab.perluDiisi;
-        setState(() => _tab = autoTab);
-        _scrolledToHighlight = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final ctx = _highlightKey.currentContext;
-          if (ctx != null) {
-            Scrollable.ensureVisible(
-              ctx,
-              duration: const Duration(milliseconds: 450),
-              curve: Curves.easeInOut,
-              alignment: 0.1,
-            );
-          }
-        });
+    // Dengarkan "titipan" tab dari luar (mis. tombol "Lihat Semua" di
+    // Aktivitas Terakhir dashboard yang minta screen ini dibuka langsung
+    // di tab "Riwayat"). Diperlukan karena screen ini persist di
+    // IndexedStack, jadi tidak dibuat ulang tiap kali tab-nya dikunjungi.
+    NavController.instance.pendingLaporanTab.addListener(_onTabRequested);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onTabRequested());
+  }
+
+  /// Scroll otomatis ke item yang idRequest-nya cocok dengan
+  /// widget.highlightId. Juga otomatis pindah ke tab yang tepat (Perlu
+  /// Diisi / Riwayat) sesuai status laporan item itu, kalau berbeda dari
+  /// tab yang sedang aktif.
+  void _maybeHandleHighlight(List<PenugasanModel> allData) {
+    if (widget.highlightId == null || _hasScrolledToHighlight) return;
+    final target = allData.where((p) => p.idRequest == widget.highlightId).toList();
+    if (target.isEmpty) return;
+
+    final item = target.first;
+    final targetTab = item.sudahLapor ? _MainTab.riwayat : _MainTab.perluDiisi;
+    if (_tab != targetTab) {
+      // Pindah tab dulu, baru scroll di frame berikutnya setelah key
+      // untuk tab baru itu terpasang.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _tab = targetTab);
       });
+      return;
     }
+
+    _hasScrolledToHighlight = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _tileKeys[widget.highlightId];
+      final ctx = key?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          alignment: 0.1,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    NavController.instance.pendingLaporanTab.removeListener(_onTabRequested);
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _onTabRequested() {
+    final requested = NavController.instance.pendingLaporanTab.value;
+    if (requested != null && mounted) {
+      final target = requested == 'riwayat' ? _MainTab.riwayat : _MainTab.perluDiisi;
+      if (target != _tab) {
+        setState(() => _tab = target);
+      }
+      NavController.instance.pendingLaporanTab.value = null;
+    }
   }
 
   /// Riwayat pelaporan harus mencakup semua perjalanan yang SUDAH DIMULAI
@@ -117,6 +147,12 @@ class _LaporanScreenState extends State<LaporanScreen> {
                     final riwayat = _riwayat(allData);
 
                     final activeList = _tab == _MainTab.perluDiisi ? belumDiisi : riwayat;
+
+                    // Dipanggil sebagai statement biasa (bukan elemen widget
+                    // di dalam list), makanya harus di luar `children: [...]`.
+                    if (!isLoading && !snapshot.hasError && allData.isNotEmpty) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeHandleHighlight(allData));
+                    }
 
                     return ListView(
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -179,12 +215,10 @@ class _LaporanScreenState extends State<LaporanScreen> {
                             ),
                           )
                         else
-                          // PENTING: dicocokkan ke idRequest (request_kendis.id),
-                          // bukan p.id (penugasan.id) -- lihat catatan di initState.
                           ...activeList.map((p) => _LaporanCard(
-                                key: p.idRequest == widget.highlightId ? _highlightKey : null,
+                                key: _tileKeys.putIfAbsent(p.idRequest, () => GlobalKey()),
                                 penugasan: p,
-                                highlighted: p.idRequest == widget.highlightId,
+                                isHighlighted: widget.highlightId != null && p.idRequest == widget.highlightId,
                               )),
 
                         if (!isLoading && !snapshot.hasError && _tab == _MainTab.riwayat && allData.isNotEmpty) ...[
@@ -222,9 +256,7 @@ class _LaporanScreenState extends State<LaporanScreen> {
           const Spacer(),
           InkWell(
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotifikasiScreen()),
-              );
+              // TODO: Buka halaman notifikasi
             },
             borderRadius: BorderRadius.circular(20),
             child: const Padding(
@@ -346,12 +378,8 @@ class _MainTabChips extends StatelessWidget {
 
 class _LaporanCard extends StatelessWidget {
   final PenugasanModel penugasan;
-
-  /// True kalau card ini yang dituju dari notifikasi -- dikasih border gold
-  /// + tag "Dari Notifikasi" biar user langsung notice tanpa harus nyari.
-  final bool highlighted;
-
-  const _LaporanCard({super.key, required this.penugasan, this.highlighted = false});
+  final bool isHighlighted;
+  const _LaporanCard({super.key, required this.penugasan, this.isHighlighted = false});
 
   static final _rupiah = NumberFormat.decimalPattern('id_ID');
 
@@ -377,45 +405,29 @@ class _LaporanCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: isHighlighted
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.accentGold, width: 2.5),
+            )
+          : null,
+      padding: isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
       child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        elevation: isHighlighted ? 3 : 0,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () => _openReport(context),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: highlighted
-                  ? Border.all(color: AppColors.accentGold, width: 2)
-                  : (sudahLapor ? null : Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.2)),
-              color: highlighted ? AppColors.accentGold.withOpacity(0.05) : null,
+              border: sudahLapor ? null : Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.2),
             ),
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (highlighted) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentGold,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.notifications_active, size: 12, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          'Dari Notifikasi',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
                 // Baris tanggal + badge status
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../../core/app_theme.dart';
-import '../../../models/penugasan_menunggu_model.dart';
+import '../core/app_theme.dart';
+import '../models/penugasan_menunggu_model.dart';
 
 class PenugasanNotificationSheet {
   /// Tampilkan popup notifikasi penugasan baru.
+  ///
+  /// [onAccept] dipanggil saat tombol "Terima Tugas" ditekan.
+  /// Return `true` dari [onAccept] untuk menutup sheet otomatis,
+  /// return `false` (atau lempar exception) untuk membiarkan sheet
+  /// tetap terbuka (misal karena gagal, biar user bisa coba lagi).
   static Future<void> show({
     required BuildContext context,
     required PenugasanMenungguModel penugasan,
@@ -15,8 +19,6 @@ class PenugasanNotificationSheet {
       isDismissible: false,
       enableDrag: false,
       backgroundColor: Colors.transparent,
-      isScrollControlled:
-          true, // Tambahkan ini agar sheet bisa tampil penuh jika konten panjang
       builder: (_) => _PenugasanNotificationContent(
         penugasan: penugasan,
         onAccept: onAccept,
@@ -35,16 +37,11 @@ class _PenugasanNotificationContent extends StatefulWidget {
   });
 
   @override
-  State<_PenugasanNotificationContent> createState() =>
-      _PenugasanNotificationContentState();
+  State<_PenugasanNotificationContent> createState() => _PenugasanNotificationContentState();
 }
 
-class _PenugasanNotificationContentState
-    extends State<_PenugasanNotificationContent> {
+class _PenugasanNotificationContentState extends State<_PenugasanNotificationContent> {
   bool _isSubmitting = false;
-
-  bool get _isUrgent => widget.penugasan.isUrgent;
-  String get _formattedJadwal => widget.penugasan.jadwalFormatted;
 
   Future<void> _handleAccept() async {
     setState(() => _isSubmitting = true);
@@ -62,11 +59,17 @@ class _PenugasanNotificationContentState
   Widget build(BuildContext context) {
     final p = widget.penugasan;
 
+    // Gabungkan tempat tujuan + detail lokasi (kalau ada) untuk baris
+    // "Tujuan Akhir", mis. "SURABAYA - Kantor Pusat".
+    final tujuanLengkap = p.lokasiTujuan.isNotEmpty
+        ? '${p.tempatTujuan} - ${p.lokasiTujuan}'
+        : p.tempatTujuan;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
@@ -81,24 +84,18 @@ class _PenugasanNotificationContentState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ----- ICON LINGKARAN (Diperbarui sesuai gambar) -----
+              // ----- ICON LINGKARAN -----
               Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: const Color(
-                      0xFFF0F4F5), // Warna latar belakang abu-abu muda
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                      color: Colors.grey.shade300, width: 2), // Garis tepi
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons
-                        .assignment_late, // Ikon yang lebih mirip clipboard dengan tanda seru
-                    color: AppColors.primary,
-                    size: 32,
-                  ),
+                child: const Icon(
+                  Icons.assignment_late_rounded,
+                  color: Colors.white,
+                  size: 28,
                 ),
               ),
               const SizedBox(height: 16),
@@ -107,25 +104,25 @@ class _PenugasanNotificationContentState
               const Text(
                 'Penugasan Baru!',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Text(
                 'Segera konfirmasi ketersediaan Anda',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: AppColors.textMuted,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // ----- CARD DETAIL -----
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F7F8),
                   borderRadius: BorderRadius.circular(16),
@@ -144,17 +141,17 @@ class _PenugasanNotificationContentState
                               const Text(
                                 'KODE REQUEST',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textMuted,
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text(
                                 p.kodeRequest,
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
                                 ),
@@ -162,73 +159,68 @@ class _PenugasanNotificationContentState
                             ],
                           ),
                         ),
-                        if (_isUrgent)
+                        if (p.isUrgent)
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                  0xFFF9EED4), // Warna latar kuning pudar
-                              borderRadius: BorderRadius.circular(
-                                  8), // Sudut tidak terlalu bulat
+                              color: AppColors.accentGold.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
                               'URGENT',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Color(
-                                    0xFF8B6B15), // Warna teks coklat/emas gelap
+                                color: AppColors.accentGold,
                                 letterSpacing: 0.5,
                               ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Titik Jemput -> Tujuan Akhir (Diperbarui dengan garis putus-putus)
+                    // Titik Jemput -> Tujuan Akhir (dengan garis penghubung)
                     _buildRoutePoint(
                       icon: Icons.circle,
                       iconColor: AppColors.primary,
-                      iconSize: 12,
-                      label: 'Titik Jemput',
+                      iconSize: 10,
+                      label: 'TITIK JEMPUT',
+                      // Catatan: model belum punya field khusus titik
+                      // jemput, jadi dipakai teks tetap. Ganti dengan
+                      // field yang sesuai kalau nanti tersedia dari API.
                       value: 'PLN Nusantara Power HQ, Jakarta',
                     ),
-
-                    // Garis Putus-putus (Dashed Line) buatan manual
                     Padding(
-                      padding:
-                          const EdgeInsets.only(left: 5.5, top: 4, bottom: 4),
+                      padding: const EdgeInsets.only(left: 4.5),
                       child: Column(
                         children: List.generate(
                           4,
-                          (index) => Container(
-                            width: 1.5,
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            color: Colors.grey.shade400,
+                          (i) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 1.5),
+                            child: Container(
+                              width: 1,
+                              height: 3,
+                              color: Colors.grey.shade400,
+                            ),
                           ),
                         ),
                       ),
                     ),
-
                     _buildRoutePoint(
-                      icon:
-                          Icons.radio_button_unchecked, // Ikon lingkaran kosong
-                      iconColor: AppColors.primary,
-                      iconSize: 12,
-                      label: 'Tujuan Akhir',
-                      value: p.tempatTujuan,
+                      icon: Icons.circle_outlined,
+                      iconColor: AppColors.accentGold,
+                      iconSize: 10,
+                      label: 'TUJUAN AKHIR',
+                      value: tujuanLengkap,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Jadwal
                     Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined,
-                            size: 18, color: AppColors.primary),
-                        const SizedBox(width: 12),
+                        Icon(Icons.calendar_today_outlined, size: 15, color: AppColors.textMuted),
+                        const SizedBox(width: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -241,13 +233,11 @@ class _PenugasanNotificationContentState
                                 letterSpacing: 0.5,
                               ),
                             ),
-                            const SizedBox(height: 2),
                             Text(
-                              _formattedJadwal,
+                              p.jadwalFormatted,
                               style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight
-                                    .bold, // Ditebalkan agar sesuai gambar
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
                               ),
                             ),
@@ -258,44 +248,28 @@ class _PenugasanNotificationContentState
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // ----- TOMBOL TERIMA TUGAS -----
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 50,
                 child: ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _handleAccept,
                   icon: _isSubmitting
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Icon(Icons.check_circle_outline, size: 22),
+                      : const Icon(Icons.check_circle_outline, size: 20),
                   label: Text(_isSubmitting ? 'Memproses...' : 'Terima Tugas'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(12)), // Sudut sedikit kotak
-                    textStyle: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ----- GARIS BAWAH -----
-              Container(
-                width: double.infinity,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ],
@@ -316,7 +290,7 @@ class _PenugasanNotificationContentState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.only(top: 3),
           child: Icon(icon, size: iconSize, color: iconColor),
         ),
         const SizedBox(width: 12),
@@ -327,16 +301,17 @@ class _PenugasanNotificationContentState
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textMuted,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 2),
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
