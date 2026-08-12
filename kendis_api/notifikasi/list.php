@@ -2,9 +2,14 @@
 require_once __DIR__ . '/../config/headers.php';
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/cron_reminder.php'; // definisi broadcastKegiatanBaru()
 
 $user = requireDriverAuth();
 $pdo = getDbConnection();
+
+// Pastikan kegiatan baru yang belum sempat dinotifikasi (mis. oleh cron)
+// langsung masuk daftar lonceng saat driver membukanya. Idempotent.
+broadcastKegiatanBaru($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     jsonError('Method tidak diizinkan', 405);

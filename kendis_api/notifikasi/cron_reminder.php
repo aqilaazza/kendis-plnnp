@@ -5,6 +5,53 @@
 
 require_once __DIR__ . '/../config/database.php';
 
+/**
+ * Broadcast notifikasi "Kegiatan Harian Baru" ke semua driver aktif.
+ *
+ * Dipanggil dari:
+ *  - file ini sendiri (cron, bagian #10)
+ *  - notifikasi/list.php        (saat driver buka halaman lonceng)
+ *  - notifikasi/badge_count.php (saat app polling badge, tiap 30 detik)
+ *
+ * Idempotent: kegiatan yang sudah pernah dinotifikasi (dikenali dari pesan
+ * yang sama persis) tidak akan dikirim ulang, sehingga aman dipanggil
+ * sesering apa pun tanpa duplikasi.
+ */
+function broadcastKegiatanBaru(PDO $pdo): int {
+    $stmt = $pdo->prepare(
+        "INSERT INTO notifikasi (id_user, id_request, kategori, tipe, judul, pesan, is_read, created_at)
+         SELECT u.id, NULL, 'kegiatan', 'kegiatan_baru',
+                'Kegiatan Harian Baru',
+                CONCAT('Ada kegiatan harian baru: ', k.nama_kegiatan, ' ke ', k.tujuan, '.'),
+                0, NOW()
+         FROM kegiatan_harian k
+         CROSS JOIN users u
+         WHERE u.role = 'driver'
+           AND u.is_active = 1
+           AND k.id_driver IS NULL
+           AND NOT EXISTS (
+                SELECT 1 FROM notifikasi n
+                WHERE n.id_user = u.id
+                  AND n.tipe = 'kegiatan_baru'
+                  AND n.pesan = CONCAT('Ada kegiatan harian baru: ', k.nama_kegiatan, ' ke ', k.tujuan, '.')
+           )"
+    );
+    $stmt->execute();
+    return $stmt->rowCount();
+}
+
+// =========================================================
+// GUARD: isi cron hanya jalan saat file ini dipanggil langsung
+// (cron CLI / buka URL di browser), bukan saat di-include.
+// =========================================================
+$isDirectRun =
+    PHP_SAPI === 'cli'
+    || (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === __FILE__);
+
+if (!$isDirectRun) {
+    return;
+}
+
 $pdo = getDbConnection();
 
 $log = [];
@@ -136,6 +183,13 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute();
 $log['laporan_belum_diisi'] = $stmt->rowCount();
+
+// =========================================================
+// #10 — KEGIATAN HARIAN BARU MASUK
+// (broadcast ke semua driver aktif, sekali per kegiatan per driver;
+//  idempotent, aman dipanggil juga oleh list.php / badge_count.php)
+// =========================================================
+$log['kegiatan_baru'] = broadcastKegiatanBaru($pdo);
 
 // =========================================================
 // OUTPUT LOG (buat cek manual di browser/CLI, bukan dikonsumsi app)
