@@ -5,7 +5,7 @@ import 'badge_service.dart';
 class BadgeNotifier extends ChangeNotifier {
   BadgeNotifier._internal() {
     refresh();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) => refresh());
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => refresh());
   }
   static final BadgeNotifier instance = BadgeNotifier._internal();
 

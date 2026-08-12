@@ -13,14 +13,14 @@ require_once __DIR__ . '/../config/database.php';
  *  - notifikasi/list.php        (saat driver buka halaman lonceng)
  *  - notifikasi/badge_count.php (saat app polling badge, tiap 30 detik)
  *
- * Idempotent: kegiatan yang sudah pernah dinotifikasi (dikenali dari pesan
- * yang sama persis) tidak akan dikirim ulang, sehingga aman dipanggil
- * sesering apa pun tanpa duplikasi.
+ * Idempotent: dedup berdasarkan id_request = id kegiatan (bukan teks pesan),
+ * supaya kegiatan baru yang kebetulan punya nama+tujuan sama dengan kegiatan
+ * lama tetap dianggap kegiatan berbeda dan tetap dinotifikasi.
  */
 function broadcastKegiatanBaru(PDO $pdo): int {
     $stmt = $pdo->prepare(
-        "INSERT INTO notifikasi (id_user, id_request, kategori, tipe, judul, pesan, is_read, created_at)
-         SELECT u.id, NULL, 'kegiatan', 'kegiatan_baru',
+        "INSERT INTO notifikasi (id_user, id_request, id_kegiatan, kategori, tipe, judul, pesan, is_read, created_at)
+         SELECT u.id, NULL, k.id, 'kegiatan', 'kegiatan_baru',
                 'Kegiatan Harian Baru',
                 CONCAT('Ada kegiatan harian baru: ', k.nama_kegiatan, ' ke ', k.tujuan, '.'),
                 0, NOW()
@@ -33,7 +33,7 @@ function broadcastKegiatanBaru(PDO $pdo): int {
                 SELECT 1 FROM notifikasi n
                 WHERE n.id_user = u.id
                   AND n.tipe = 'kegiatan_baru'
-                  AND n.pesan = CONCAT('Ada kegiatan harian baru: ', k.nama_kegiatan, ' ke ', k.tujuan, '.')
+                  AND n.id_kegiatan = k.id
            )"
     );
     $stmt->execute();

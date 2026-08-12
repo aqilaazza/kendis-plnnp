@@ -18,7 +18,7 @@ class NotifikasiScreen extends StatefulWidget {
 }
 
 class _NotifikasiScreenState extends State<NotifikasiScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabController;
 
   final Map<String, List<NotifikasiModel>> _cache = {
@@ -60,11 +60,33 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
     );
     for (final filter in _tabs) {
       _loadData(filter);
-}
+    }
+
+    // Refresh data saat app kembali dari background (timer polling pause
+    // waktu app di background, jadi biar tidak nunggu interval lagi).
+    WidgetsBinding.instance.addObserver(this);
+
+    // Dengarkan BadgeNotifier 
+    BadgeNotifier.instance.addListener(_onBadgeChanged);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshAll();
+      BadgeNotifier.instance.refresh();
+    }
+  }
+
+  void _onBadgeChanged() {
+    if (!mounted) return;
+    _refreshAll();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    BadgeNotifier.instance.removeListener(_onBadgeChanged);
     _tabController.dispose();
     super.dispose();
   }
