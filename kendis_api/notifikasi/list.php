@@ -27,7 +27,7 @@ if ($filter === 'belum_dibaca') {
 // 'semua' -> tidak menambah kondisi tambahan
 
 $stmt = $pdo->prepare(
-    "SELECT id, kategori, tipe, judul, pesan, id_request, is_read, created_at
+    "SELECT id, kategori, tipe, judul, pesan, id_request, id_kegiatan, is_read, created_at
      FROM notifikasi
      $where
      ORDER BY created_at DESC

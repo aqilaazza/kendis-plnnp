@@ -167,7 +167,13 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
   /// auto-pilih tab yang tepat, auto-scroll, dan highlight card yang
   /// berkaitan dengan notifikasi ini -- bukan cuma buka list kosongan.
   void _handleTap(NotifikasiModel item) {
-    final highlightId = item.idRequest;
+    // Untuk notifikasi penugasan/laporan, idRequest berisi request_kendis.id.
+    // Khusus kegiatan, backend menyimpan id kegiatan di kolom id_kegiatan
+    // (id_request-nya NULL), jadi dipakai itu untuk highlight.
+    final highlightId =
+        item.kategori?.trim().toLowerCase() == 'kegiatan'
+            ? item.idKegiatan ?? item.idRequest
+            : item.idRequest;
     // Dibikin toleran (trim + lowercase) -- kalau backend ngirim "Penugasan"
     // atau ada spasi nyempil, tetep ke-detect. Sebelumnya switch ini pakai
     // exact-match string sensitif kapital/spasi, jadi kalau nilai kategori
