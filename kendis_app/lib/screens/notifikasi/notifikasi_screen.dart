@@ -18,7 +18,7 @@ class NotifikasiScreen extends StatefulWidget {
 }
 
 class _NotifikasiScreenState extends State<NotifikasiScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabController;
 
   final Map<String, List<NotifikasiModel>> _cache = {
@@ -60,11 +60,33 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
     );
     for (final filter in _tabs) {
       _loadData(filter);
-}
+    }
+
+    // Refresh data saat app kembali dari background (timer polling pause
+    // waktu app di background, jadi biar tidak nunggu interval lagi).
+    WidgetsBinding.instance.addObserver(this);
+
+    // Dengarkan BadgeNotifier 
+    BadgeNotifier.instance.addListener(_onBadgeChanged);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshAll();
+      BadgeNotifier.instance.refresh();
+    }
+  }
+
+  void _onBadgeChanged() {
+    if (!mounted) return;
+    _refreshAll();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    BadgeNotifier.instance.removeListener(_onBadgeChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -145,7 +167,13 @@ class _NotifikasiScreenState extends State<NotifikasiScreen>
   /// auto-pilih tab yang tepat, auto-scroll, dan highlight card yang
   /// berkaitan dengan notifikasi ini -- bukan cuma buka list kosongan.
   void _handleTap(NotifikasiModel item) {
-    final highlightId = item.idRequest;
+    // Untuk notifikasi penugasan/laporan, idRequest berisi request_kendis.id.
+    // Khusus kegiatan, backend menyimpan id kegiatan di kolom id_kegiatan
+    // (id_request-nya NULL), jadi dipakai itu untuk highlight.
+    final highlightId =
+        item.kategori?.trim().toLowerCase() == 'kegiatan'
+            ? item.idKegiatan ?? item.idRequest
+            : item.idRequest;
     // Dibikin toleran (trim + lowercase) -- kalau backend ngirim "Penugasan"
     // atau ada spasi nyempil, tetep ke-detect. Sebelumnya switch ini pakai
     // exact-match string sensitif kapital/spasi, jadi kalau nilai kategori

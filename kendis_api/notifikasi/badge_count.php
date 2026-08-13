@@ -2,9 +2,14 @@
 require_once __DIR__ . '/../config/headers.php';
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/cron_reminder.php'; // definisi broadcastKegiatanBaru()
 
 $user = requireDriverAuth();
 $pdo = getDbConnection();
+
+// Broadcast notifikasi kegiatan baru dulu, supaya badge lonceng ikut
+// menghitung kegiatan yang belum sempat dinotifikasi cron. Idempotent.
+broadcastKegiatanBaru($pdo);
 
 // =========================================================
 // 1) TUGAS BELUM DIJALANKAN
