@@ -4,11 +4,11 @@ import 'core/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/main_nav/main_nav_screen.dart';
-import 'notifikasi/fcm_service.dart'; // TAMBAHAN
+import 'notifikasi/fcm_service.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // TAMBAHAN (wajib sebelum initFCM)
-  await initFCM(); // TAMBAHAN
+  WidgetsFlutterBinding.ensureInitialized();
+  await initFCM(); // Firebase.initializeApp() dipanggil di dalam initFCM(), tidak perlu diulang di sini
   runApp(const KendisDriverApp());
 }
 
