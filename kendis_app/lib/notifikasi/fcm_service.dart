@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../firebase_options.dart'; // TAMBAHAN
+import '../firebase_options.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -17,15 +17,21 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // GANTI
+    options: DefaultFirebaseOptions.currentPlatform,
   );
   showLocalNotification(message);
 }
 
 Future<void> initFCM() async {
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // GANTI
+    options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  const AndroidInitializationSettings androidInit =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initSettings =
+      InitializationSettings(android: androidInit);
+  await flutterLocalNotificationsPlugin.initialize(initSettings);
 
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
