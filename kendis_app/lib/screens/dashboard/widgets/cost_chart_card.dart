@@ -94,12 +94,20 @@ class _Chart extends StatelessWidget {
                 getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1),
               ),
               borderData: FlBorderData(show: false),
+              // Klip semua elemen (termasuk overshoot kurva melengkung) biar
+              // gak ada yang nembus keluar area plot / kepotong aneh sama
+              // batas kontainer.
+              clipData: const FlClipData.all(),
               minY: 0,
               maxY: _maxY,
               // Kunci sumbu X: 1 tick per titik data, mencegah label
               // bulan/tahun terduplikasi akibat auto-interval fl_chart.
-              minX: 0,
-              maxX: (categories.length - 1).toDouble(),
+              // Domain dikasih sedikit margin (-0.4 / +0.4) di kiri-kanan —
+              // tanpa ini, titik pertama & terakhir nempel persis di tepi
+              // area chart, jadi label bulannya (Mar 2026 / Agu 2026) kepotong
+              // setengah karena gak ada ruang buat teksnya "napas".
+              minX: -0.4,
+              maxX: (categories.length - 1) + 0.4,
               titlesData: FlTitlesData(
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
@@ -127,6 +135,11 @@ class _Chart extends StatelessWidget {
               ),
               lineTouchData: LineTouchData(
                 touchTooltipData: LineTouchTooltipData(
+                  // Tanpa dua flag ini, tooltip di titik-titik dekat tepi
+                  // kanan (mis. Agustus, titik terakhir) nongol nembus ke
+                  // luar batas chart/card — itu yang bikin kepotong.
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
                   getTooltipItems: (touchedSpots) {
                     return touchedSpots.map((spot) {
                       final labels = ['BBM', 'Parkir', 'Tol'];
@@ -163,7 +176,9 @@ class _Chart extends StatelessWidget {
       if (c.parkir > max) max = c.parkir;
       if (c.tol > max) max = c.tol;
     }
-    return max > 0 ? max * 1.2 : 1000000;
+    // Headroom dinaikkan dari 1.2x ke 1.35x — puncak kurva BBM sebelumnya
+    // mepet/kepotong di batas atas chart waktu kenaikannya tajam.
+    return max > 0 ? max * 1.35 : 1000000;
   }
 
   String _formatRupiah(double value) {
@@ -178,7 +193,13 @@ class _Chart extends StatelessWidget {
       color: color,
       barWidth: 3,
       isCurved: true,
-      curveSmoothness: 0.3,
+      // Smoothness diturunkan sedikit (0.3 -> 0.22) plus overshoot-prevention
+      // diaktifkan — ini kombinasi yang bikin garis tetap melengkung halus
+      // tapi gak "membuncit" ngelewatin nilai data aslinya (itu yang bikin
+      // puncak BBM kelihatan kepotong sebelumnya).
+      curveSmoothness: 0.22,
+      preventCurveOverShooting: true,
+      preventCurveOvershootingThreshold: 10,
       dotData: const FlDotData(show: false),
       belowBarData: BarAreaData(show: true, color: color.withOpacity(0.08)),
     );
