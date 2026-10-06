@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/app_theme.dart';
+import 'core/navigation_service.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/main_nav/main_nav_screen.dart';
@@ -8,7 +9,7 @@ import 'notifikasi/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initFCM(); // Firebase.initializeApp() dipanggil di dalam initFCM(), tidak perlu diulang di sini
+  await initFCM();
   runApp(const KendisDriverApp());
 }
 
@@ -22,6 +23,7 @@ class KendisDriverApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()..checkLoginStatus()),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Kendis Driver',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
